@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node.js WSS Client</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #18191a; color: #b0b3b8; }
+        .container { max-width: 800px; margin: auto; padding: 20px; border: 1px solid #333; border-radius: 8px; background-color: #242526; }
+        h1 { color: #007bff; }
+        .log-area { background-color: #333; border: 1px solid #555; padding: 10px; margin-top: 15px; height: 200px; overflow-y: scroll; font-family: monospace; font-size: 0.9em; }
+        .input-group { display: flex; margin-top: 15px; }
+        .input-group input { flex-grow: 1; padding: 8px; border: 1px solid #555; border-radius: 4px 0 0 4px; background-color: #333; color: #b0b3b8; }
+        .input-group button { padding: 8px 15px; border: none; border-radius: 0 4px 4px 0; background-color: #007bff; color: white; cursor: pointer; }
+        .input-group button:hover { background-color: #0056b3; }
+        #connectionStatus { font-weight: bold; margin-bottom: 10px; }
+        .status-connected { color: #28a745; } /* Verde */
+        .status-disconnected { color: #dc3545; } /* Rosso */
+        .status-connecting { color: #ffc107; } /* Giallo */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Node.js WSS Client</h1>
+        <p>Connessione al tuo server Node.js via WSS.</p>
+
+        <p id="connectionStatus">Stato connessione: <span class="status-disconnected">Disconnesso</span></p>
+        <div class="log-area" id="log"></div>
+
+        <div class="input-group">
+            <input type="text" id="messageInput" placeholder="Messaggio per il server">
+            <button onclick="sendMessageToNodejs()">Invia</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Configurazione del tuo server Node.js ---
+        const nodejs_server_ip = "192.168.1.24"; // L'IP del tuo server Node.js
+        const nodejs_server_port = 3000;         // La porta su cui Node.js ascolta
+        const ws_server_path = "/ws";            // Il percorso WebSocket sul tuo server Node.js
+
+        let websocket; // Variabile globale per il client WebSocket
+        let reconnectIntervalId = null; // ID per il timer di riconnessione
+        const RECONNECT_DELAY = 5000; // Ritardo di riconnessione in ms
+
+        const logElement = document.getElementById('log');
+        const statusSpan = document.querySelector('#connectionStatus span'); // Seleziona lo <span> per lo stato
+
+        function appendLog(message, type = 'info') {
+            const p = document.createElement('p');
+            p.className = `log-${type}`;
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(p);
+            logElement.scrollTop = logElement.scrollHeight; // Scorrimento automatico
+        }
+
+        function updateStatus(status, className) {
+            statusSpan.textContent = status;
+            statusSpan.className = className;
+        }
+
+        function connectToNodejsWebSocket() {
+            // Se c'è già un tentativo di riconnessione, annullalo
+            if (reconnectIntervalId) {
+                clearTimeout(reconnectIntervalId);
+                reconnectIntervalId = null;
+            }
+
+            const ws_url = `wss://${nodejs_server_ip}:${nodejs_server_port}${ws_server_path}`;
+
+            appendLog(`Tentativo di connessione WebSocket al server Node.js: ${ws_url}`);
+            updateStatus("Connessione in corso...", "status-connecting");
+            
+            websocket = new WebSocket(ws_url); // Crea un nuovo client WebSocket
+
+            websocket.onopen = function(event) {
+                appendLog("[WS-CLIENT] Connesso al server Node.js!");
+                updateStatus("Connesso", "status-connected");
+                // Puoi inviare un messaggio al server dopo la connessione
+                websocket.send(JSON.stringify({ type: "nome", source: "00:00:00" }));
+            };
+
+            websocket.onmessage = function(event) {
+                appendLog("[WS-CLIENT] Messaggio dal server: " + event.data);
+                
+                try {
+                    const receivedData = JSON.parse(event.data);
+                    appendLog("  JSON parsato: " + JSON.stringify(receivedData), 'success');
+                    
+                    // Esempio di gestione di un messaggio specifico dal server
+                    if (receivedData.type === "ack") {
+                        appendLog("  Server ha riconosciuto la connessione.", 'info');
+                    }
+                    if (receivedData.type === "nomeUID") {
+                         appendLog(`  Nome UID ricevuto: ${receivedData.nome}`, 'info');
+                    }
+                    // Puoi aggiungere qui la logica per elaborare i messaggi JSON ricevuti
+                    // es. aggiornare un'area della pagina con i dati.
+
+                } catch (e) {
+                    appendLog("  Errore parsing JSON ricevuto: " + e.message, 'error');
+                }
+            };
+
+            websocket.onclose = function(event) {
+                appendLog(`[WS-CLIENT] Disconnesso dal server. Codice: ${event.code}, Ragione: ${event.reason}`, 'warning');
+                updateStatus("Disconnesso", "status-disconnected");
+                // Tenta di riconnettersi dopo un po'
+                reconnectIntervalId = setTimeout(connectToNodejsWebSocket, RECONNECT_DELAY); 
+            };
+
+            websocket.onerror = function(error) {
+                appendLog("[WS-CLIENT] Errore WebSocket: " + error.message, 'error');
+                updateStatus("Errore!", "status-disconnected");
+                // Il `onclose` si attivera' dopo `onerror`, quindi la riconnessione e' gestita lì.
+            };
+        }
+
+        // Avvia la connessione quando la pagina è completamente caricata
+        document.addEventListener('DOMContentLoaded', connectToNodejsWebSocket);
+
+        // Funzione per inviare un messaggio manuale dall'input del browser al server
+        function sendMessageToNodejs() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                const messageInput = document.getElementById('messageInput');
+                const message = messageInput.value;
+                if (message) {
+                    const clientData = { clientMessage: message, clientTime: new Date().toISOString(), type: 'user_message' };
+                    websocket.send(JSON.stringify(clientData));
+                    appendLog("[WS-CLIENT] Messaggio manuale inviato: " + JSON.stringify(clientData));
+                    messageInput.value = ''; // Pulisci l'input
+                }
+            } else {
+                appendLog("[WS-CLIENT] WebSocket non connesso o non pronto.", 'warning');
+            }
+        }
+    </script>
+</body>
+</html>
