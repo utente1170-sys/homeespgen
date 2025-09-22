@@ -17,6 +17,7 @@ function generateNavbar(activePage) {
     return `
     <nav class="navbar">
         <div class="navbar-container">
+         HomeEspGen
             <a href="/" class="navbar-brand">🏠 Home</a>
             <ul class="navbar-nav">
                 ${navItems}

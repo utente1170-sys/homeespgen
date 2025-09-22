@@ -1067,7 +1067,7 @@ function generateSpendingDashboard(spendingData, pagination, filters) {
         ${(0, helpers_1.generateSearchSection)('searchOperations', '🔍 Cerca nelle operazioni...', 'clearOperationsSearch()')}
         <div class="table-container">
             <table>
-                <thead>
+                <thead> 
                     <tr> 
                         <th>DEVICE</th> 
                         <th>Data/Ora ESP32</th>
