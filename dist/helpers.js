@@ -201,7 +201,7 @@ function generatePaginationScript() {
                 '<td>' + op.datetime + '</td>' +
                 '<td>' + Number(op.credito_precedente).toFixed(2) + '€</td>' +
                 '<td>' + Number(op.credito_attuale).toFixed(2) + '€</td>' +
-                '<td><span class="spesa">' + spesa.toFixed(2) + '€</span></td>' +
+                '<td><span class="doccia">' + spesa.toFixed(2) + '€</span></td>' +
                 '<td><span class="status ' + op.status + '">' + op.status + '</span></td>' +
               '</tr>';
             tbody.insertAdjacentHTML('beforeend', row);

@@ -1337,7 +1337,7 @@ function generateTagOwnersTable(tagOwners, pagination) {
 
     } catch (error) {
         console.error("Errore durante l'aggiornamento dell\'UID:", error);
-        alert('Errore durante il recupero dell\\'UID: ' + error.message);
+       // alert('Errore durante il recupero dell\\'UID: ' + error.message);
         uidInput.value = "Errore!"; // Mostra un messaggio di errore nell'input
     }
         

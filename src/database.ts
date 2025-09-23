@@ -991,7 +991,7 @@ class Database {
             let spesa = 0;
             
             // Calcola la spesa solo per operazioni di tipo "spesa"
-            if (row.status === 'spesa') {
+            if (row.status === 'doccia') {
               spesa = Math.round((row.credito_precedente - row.credito_attuale) * 100) / 100;
               currentTotalSpent += spesa;
             }
@@ -1018,7 +1018,7 @@ class Database {
           });
 
           const currentTotalOperations = rows.length;
-          const currentSpendingOperations = operations.filter(op => op.status === 'spesa').length;
+          const currentSpendingOperations = operations.filter(op => op.status === 'doccia').length;
 
           // Recupera dati dal backup
           const backupStats = await this.getSpendingSummary(uid);
@@ -1093,10 +1093,10 @@ class Database {
         SELECT uid, 
                COUNT(*) as total_operations,
                SUM(CASE 
-                 WHEN status = 'spesa' THEN (credito_precedente - credito_attuale)
+                 WHEN status = 'doccia' THEN (credito_precedente - credito_attuale)
                  ELSE 0 
                END) as total_spent,
-               COUNT(CASE WHEN status = 'spesa' THEN 1 END) as spending_operations,
+               COUNT(CASE WHEN status = 'doccia' THEN 1 END) as spending_operations,
                SUM(CASE 
                  WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'azzeramento' THEN (-credito_precedente)
@@ -1179,9 +1179,9 @@ class Database {
       const sql = `
         SELECT uid, 
                COUNT(*) as total_operations,
-               COUNT(CASE WHEN status = 'spesa' THEN 1 END) as spending_operations,
+               COUNT(CASE WHEN status = 'doccia' THEN 1 END) as spending_operations,
                SUM(CASE 
-                 WHEN status = 'spesa' THEN (credito_precedente - credito_attuale)
+                 WHEN status = 'doccia' THEN (credito_precedente - credito_attuale)
                  ELSE 0 
                END) as total_spent,
                SUM(CASE 
@@ -1440,8 +1440,8 @@ class Database {
       const sqlSensor = `
         SELECT   SUBSTR(datetime, 4, 2) || '-' || SUBSTR(datetime, 7, 4) as yearMonth,
                COUNT(*) as totalOperations,
-               COUNT(CASE WHEN status = 'spesa' THEN 1 END) as totalSpendingOperations,
-               SUM(CASE WHEN status = 'spesa' THEN (credito_precedente - credito_attuale) ELSE 0 END) as totalSpent,
+               COUNT(CASE WHEN status = 'doccia' THEN 1 END) as totalSpendingOperations,
+               SUM(CASE WHEN status = 'doccia' THEN (credito_precedente - credito_attuale) ELSE 0 END) as totalSpent,
                SUM(CASE 
                  WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'azzeramento' THEN (-credito_precedente)
@@ -1521,8 +1521,8 @@ class Database {
       const sqlSensor = `
         SELECT   SUBSTR(datetime, 4, 2) || '-' || SUBSTR(datetime, 7, 4) as yearMonth,
                COUNT(*) as totalOperations,
-               COUNT(CASE WHEN status = 'spesa' THEN 1 END) as totalSpendingOperations,
-               SUM(CASE WHEN status = 'spesa' THEN (credito_precedente - credito_attuale) ELSE 0 END) as totalSpent,
+               COUNT(CASE WHEN status = 'doccia' THEN 1 END) as totalSpendingOperations,
+               SUM(CASE WHEN status = 'doccia' THEN (credito_precedente - credito_attuale) ELSE 0 END) as totalSpent,
                SUM(CASE 
                  WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'azzeramento' THEN (-credito_precedente)
@@ -1696,10 +1696,10 @@ class Database {
         SELECT uid, 
                COUNT(*) as total_operations,
                SUM(CASE 
-                 WHEN status = 'spesa' THEN (credito_precedente - credito_attuale)
+                 WHEN status = 'doccia' THEN (credito_precedente - credito_attuale)
                  ELSE 0 
                END) as total_spent,
-               COUNT(CASE WHEN status = 'spesa' THEN 1 END) as spending_operations,
+               COUNT(CASE WHEN status = 'doccia' THEN 1 END) as spending_operations,
                SUM(CASE 
                  WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'azzeramento' THEN (-credito_precedente)
@@ -1870,7 +1870,7 @@ class Database {
             let spesa = 0;
             
             // Calcola la spesa solo per operazioni di tipo "spesa"
-            if (row.status === 'spesa') {
+            if (row.status === 'doccia') {
               spesa = Math.round((row.credito_precedente - row.credito_attuale) * 100) / 100;
               currentTotalSpent += spesa;
             }
@@ -1897,7 +1897,7 @@ class Database {
           });
 
           const currentTotalOperations = rows.length;
-          const currentSpendingOperations = operations.filter(op => op.status === 'spesa').length;
+          const currentSpendingOperations = operations.filter(op => op.status === 'doccia').length;
 
           // Recupera dati dal backup
           const backupStats = await this.getSpendingSummary(uid);
