@@ -1317,7 +1317,7 @@ function generateTagOwnersTable(tagOwners, pagination) {
     const uidInput = document.getElementById('uids');
     
     if (!uidInput) {
-        console.error("Errore: Elemento input 'uids' non trovato.");
+      //  console.error("Errore: Elemento input 'uids' non trovato.");
         return;
     }
 
@@ -1325,18 +1325,18 @@ function generateTagOwnersTable(tagOwners, pagination) {
         // Effettua la richiesta AJAX al tuo ESP32
         const response = await fetch('/UID');  
         if (!response.ok) {
-            throw new Error('HTTP error! status: \${response.status}');
+       //     throw new Error('HTTP error! status: \${response.status}');
         }
 
         // Assumiamo che il server /UID restituisca il valore UID come testo puro
         const uidValue = await response.text();  
-        console.log(uidValue);
+      //  console.log(uidValue);
         
         uidInput.value = uidValue; // Aggiorna il valore dell'input
         
 
     } catch (error) {
-        console.error("Errore durante l'aggiornamento dell\'UID:", error);
+      //  console.error("Errore durante l'aggiornamento dell\'UID:", error);
        // alert('Errore durante il recupero dell\\'UID: ' + error.message);
         uidInput.value = "Errore!"; // Mostra un messaggio di errore nell'input
     }
@@ -1630,8 +1630,14 @@ function generateTagOwnersTable(tagOwners, pagination) {
             });
         }
     }
-    setInterval(function(){
-      refreshUid();  },2000);
+    //setInterval(function(){
+    //  refreshUid();  },2000);
+    function loop(){
+    refreshUid();
+    setTimeout(loop,2000);
+    }
+    loop();
+
     // Inizializza il sticky header quando la pagina è caricata
     document.addEventListener('DOMContentLoaded', function() {
         initStickyHeader();

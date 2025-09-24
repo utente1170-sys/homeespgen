@@ -595,9 +595,17 @@ ____________________________________________*/
     background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); /* Gradiente rosso per indicare spese */
     color: #ffffff; /* Testo bianco per contrasto */
 }
+.status.spesa {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); /* Gradiente rosso per indicare spese */
+    color: #ffffff; /* Testo bianco per contrasto */
+}
 
 /* Status per accrediti */
 .status.accredito {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); /* Gradiente verde per indicare accrediti */
+    color: #ffffff; /* Testo bianco per contrasto */
+}
+.status.ricar {
     background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); /* Gradiente verde per indicare accrediti */
     color: #ffffff; /* Testo bianco per contrasto */
 }
