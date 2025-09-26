@@ -162,8 +162,8 @@ console.log(serverIp);
 server.listen(port, "0.0.0.0", () => {
     console.log("Server is running on port " + port);
     const protocol = test ? 'https' : 'http';
-    console.log(`Server ${protocol} e Socket.IO in ascolto su ${protocol}://localhost:${port}`);
-    console.log(`Per connetterti dall'ESP32: ${test ? 'wss' : 'ws'}://YOUR_SERVER_IP_OR_DOMAIN:${port}/socket.io/?EIO=4&transport=websocket`);
+    console.log(`Server ${protocol} WebSocket in ascolto su ${protocol}://localhost:${port}`);
+    //console.log(`Per connetterti dall'ESP32: ${test ? 'wss' : 'ws'}://YOUR_SERVER_IP_OR_DOMAIN:${port}/socket.io/?EIO=4&transport=websocket`);
 });
 // Gestione errori del server
 server.on('error', (error) => {
@@ -174,7 +174,7 @@ server.on('connection', (socket) => {
     // console.log('Nuova connessione da:', socket.remoteAddress + ':' + socket.remotePort);
     const clientIp = socket.remoteAddress;
     const clientPort = socket.remotePort;
-    // if (clientIp!=serverIp)
+    // if (clientIp!=serverIp) 
     //   console.log(`[SERVER_CONN] Nuova connessione da: ${clientIp}:${clientPort}`);
     //   socket.on('data', (data) => {
     //     console.log(`[SERVER_CONN] Dati RAW ricevuti da ${clientIp}:${clientPort}:`);
