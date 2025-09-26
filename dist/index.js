@@ -174,14 +174,14 @@ server.on('connection', (socket) => {
     // console.log('Nuova connessione da:', socket.remoteAddress + ':' + socket.remotePort);
     const clientIp = socket.remoteAddress;
     const clientPort = socket.remotePort;
-    if (clientIp != serverIp)
-        console.log(`[SERVER_CONN] Nuova connessione da: ${clientIp}:${clientPort}`);
-    socket.on('data', (data) => {
-        console.log(`[SERVER_CONN] Dati RAW ricevuti da ${clientIp}:${clientPort}:`);
-        console.log(data.toString('hex')); // Logga i dati in formato esadecimale
-        // console.log(data.toString('utf8')); // Prova a loggarlo come testo (potrebbe essere illeggibile)
-        console.log(data);
-    });
+    // if (clientIp!=serverIp)
+    //   console.log(`[SERVER_CONN] Nuova connessione da: ${clientIp}:${clientPort}`);
+    //   socket.on('data', (data) => {
+    //     console.log(`[SERVER_CONN] Dati RAW ricevuti da ${clientIp}:${clientPort}:`);
+    //     console.log(data.toString('hex')); // Logga i dati in formato esadecimale
+    //     // console.log(data.toString('utf8')); // Prova a loggarlo come testo (potrebbe essere illeggibile)
+    //     console.log(data);
+    //   });
     socket.on('error', (error) => {
         console.log("errore2");
         console.error(`[SERVER_CONN] Errore sul socket da ${clientIp}:${clientPort}:`, error);
