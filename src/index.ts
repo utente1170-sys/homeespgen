@@ -3125,7 +3125,7 @@ app.get('/ricercauid', (req, res) => {
               console.log("record nominativo"); console.log(record.nominativo);
           } else {
               console.log(`TagOwner per UID ${uidToSearch} non trovato.`);
-              res.status(200).send("");
+              res.status(200).send("X");
           }
       })
       .catch((error: any) => { 

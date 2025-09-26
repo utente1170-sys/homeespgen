@@ -2797,7 +2797,7 @@ app.get('/ricercauid', (req, res) => {
         }
         else {
             console.log(`TagOwner per UID ${uidToSearch} non trovato.`);
-            res.status(200).send("");
+            res.status(200).send("X");
         }
     })
         .catch((error) => {
