@@ -999,12 +999,20 @@ class Database {
               spesa = Math.round((row.credito_precedente - row.credito_attuale) * 100) / 100;
               currentTotalSpent += spesa;
             }
+            else if (row.status === 'spesa cassa') {
+              spesa = Math.round((row.credito_precedente - row.credito_attuale) * 100) / 100;
+              currentTotalSpent += spesa;
+            }
             // Per "accredito" calcola il valore dell'accredito (credito_attuale - credito_precedente)
             else if (row.status === 'accredito') {
               spesa = Math.round((row.credito_attuale - row.credito_precedente) * 100) / 100;
               currentTotalCredits += spesa;
             }
             else if ( row.status.includes('ricar web')) {
+              spesa = Math.round((row.credito_attuale - row.credito_precedente) * 100) / 100;
+              currentTotalCredits += spesa;
+            }
+            else if ( row.status.includes('ricar cassa')) {
               spesa = Math.round((row.credito_attuale - row.credito_precedente) * 100) / 100;
               currentTotalCredits += spesa;
             }
@@ -1031,7 +1039,7 @@ class Database {
           });
 
           const currentTotalOperations = rows.length;
-          const currentSpendingOperations = operations.filter(op => op.status === 'doccia' || op.status === 'spesa web').length;
+          const currentSpendingOperations = operations.filter(op => op.status === 'doccia' || op.status === 'spesa web' || op.status === 'spesa cassa').length;
 
           // Recupera dati dal backup
           const backupStats = await this.getSpendingSummary(uid);
@@ -1108,13 +1116,15 @@ class Database {
                SUM(CASE 
                  WHEN status = 'doccia' THEN (credito_precedente - credito_attuale)
                  WHEN status = 'spesa web' THEN (credito_precedente - credito_attuale)
+                 WHEN status = 'spesa cassa' THEN (credito_precedente - credito_attuale)
                  ELSE 0 
                END) as total_spent,
-               COUNT(CASE WHEN status IN ('doccia','spesa web') THEN 1 END) as spending_operations,
+               COUNT(CASE WHEN status IN ('doccia','spesa web','spesa cassa') THEN 1 END) as spending_operations,
                
                SUM(CASE 
                  WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'ricar web' THEN (credito_attuale - credito_precedente)
+                 WHEN status = 'ricar cassa' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'azzeramento' THEN (-credito_precedente)
                  ELSE 0 
                END) as total_accrediti,
@@ -1195,16 +1205,18 @@ class Database {
       const sql = `
         SELECT uid, 
                COUNT(*) as total_operations,
-               COUNT(CASE WHEN status IN ('doccia','spesa web') THEN 1 END) as spending_operations,
+               COUNT(CASE WHEN status IN ('doccia','spesa web','spesa cassa') THEN 1 END) as spending_operations,
                
                SUM(CASE 
                  WHEN status = 'doccia' THEN (credito_precedente - credito_attuale)
                  WHEN status = 'spesa web' THEN (credito_precedente - credito_attuale)
+                 WHEN status = 'spesa cassa' THEN (credito_precedente - credito_attuale)
                  ELSE 0 
                END) as total_spent,
                SUM(CASE 
                  WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'ricar web' THEN (credito_attuale - credito_precedente)
+                 WHEN status = 'ricar cassa' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'azzeramento' THEN (-credito_precedente)
                  ELSE 0 
                END) as total_accrediti
@@ -1459,13 +1471,14 @@ class Database {
       const sqlSensor = `
         SELECT   SUBSTR(datetime, 4, 2) || '-' || SUBSTR(datetime, 7, 4) as yearMonth,
                COUNT(*) as totalOperations,
-               COUNT(CASE WHEN status IN ('doccia','spesa web') THEN 1 END) as totalSpendingOperations,
+               COUNT(CASE WHEN status IN ('doccia','spesa web','spesa cassa') THEN 1 END) as totalSpendingOperations,
                
-               SUM(CASE WHEN status IN ('doccia','spesa web') THEN (credito_precedente - credito_attuale) ELSE 0 END) as totalSpent,
+               SUM(CASE WHEN status IN ('doccia','spesa web','spesa cassa') THEN (credito_precedente - credito_attuale) ELSE 0 END) as totalSpent,
                
                SUM(CASE 
                  WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'ricar web' THEN (credito_attuale - credito_precedente)
+                 WHEN status = 'ricar cassa' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'azzeramento' THEN (-credito_precedente)
                  ELSE 0 
                END) as totalAccrediti
@@ -1543,12 +1556,13 @@ class Database {
       const sqlSensor = `
         SELECT   SUBSTR(datetime, 4, 2) || '-' || SUBSTR(datetime, 7, 4) as yearMonth,
                COUNT(*) as totalOperations,
-               COUNT(CASE WHEN status IN ('doccia','spesa web') THEN 1 END) as totalSpendingOperations,
-               SUM(CASE WHEN status IN ('doccia','spesa web') THEN (credito_precedente - credito_attuale) ELSE 0 END) as totalSpent,
+               COUNT(CASE WHEN status IN ('doccia','spesa web','spesa cassa') THEN 1 END) as totalSpendingOperations,
+               SUM(CASE WHEN status IN ('doccia','spesa web','spesa cassa') THEN (credito_precedente - credito_attuale) ELSE 0 END) as totalSpent,
                
                SUM(CASE 
                  WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'ricar web' THEN (credito_attuale - credito_precedente)
+                 WHEN status = 'ricar cassa' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'azzeramento' THEN (-credito_precedente)
                  ELSE 0 
                END) as totalAccrediti
@@ -1722,13 +1736,15 @@ class Database {
                SUM(CASE 
                  WHEN status = 'doccia' THEN (credito_precedente - credito_attuale)
                  WHEN status = 'spesa web' THEN (credito_precedente - credito_attuale)
+                 WHEN status = 'spesa cassa' THEN (credito_precedente - credito_attuale)
                  ELSE 0 
                END) as total_spent,
-               COUNT(CASE WHEN status IN ('doccia','spesa web') THEN 1 END) as spending_operations,
+               COUNT(CASE WHEN status IN ('doccia','spesa web','spesa cassa') THEN 1 END) as spending_operations,
                
                SUM(CASE 
                  WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'ricar web' THEN (credito_attuale - credito_precedente)
+                 WHEN status = 'ricar cassa' THEN (credito_attuale - credito_precedente)
                  WHEN status = 'azzeramento' THEN (-credito_precedente)
                  ELSE 0 
                END) as total_accrediti,
@@ -1905,12 +1921,20 @@ class Database {
               spesa = Math.round((row.credito_precedente - row.credito_attuale) * 100) / 100;
               currentTotalSpent += spesa;
             }
+            else if (row.status === 'spesa cassa') {
+              spesa = Math.round((row.credito_precedente - row.credito_attuale) * 100) / 100;
+              currentTotalSpent += spesa;
+            }
             // Per "accredito" calcola il valore dell'accredito (credito_attuale - credito_precedente)
             else if (row.status === 'accredito') {
               spesa = Math.round((row.credito_attuale - row.credito_precedente) * 100) / 100;
               currentTotalCredits += spesa;
             }
             else if (row.status === 'ricar web') {
+              spesa = Math.round((row.credito_attuale - row.credito_precedente) * 100) / 100;
+              currentTotalCredits += spesa;
+            }
+            else if (row.status === 'ricar cassa') {
               spesa = Math.round((row.credito_attuale - row.credito_precedente) * 100) / 100;
               currentTotalCredits += spesa;
             }
@@ -1932,7 +1956,7 @@ class Database {
           });
 
           const currentTotalOperations = rows.length;
-          const currentSpendingOperations = operations.filter(op => op.status === 'doccia' || op.status === 'spesa web').length;
+          const currentSpendingOperations = operations.filter(op => op.status === 'doccia' || op.status === 'spesa web' || op.status === 'spesa cassa').length;
 
           // Recupera dati dal backup
           const backupStats = await this.getSpendingSummary(uid);
