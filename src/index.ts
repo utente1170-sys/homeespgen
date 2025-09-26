@@ -3112,7 +3112,7 @@ app.get('/ricercauid', (req, res) => {
   UID=uidToSearch;
   if (!uidToSearch) { // Se il parametro e' mancante o non e' una stringa valida
       console.warn("Richiesta /ricercauid senza parametro 'ricercaUID' o non valido.");
-      return res.status(400).send(JSON.stringify({ type: 'error', message: 'Parametro "ricercaUID" mancante o non valido nella query.' }));
+      res.status(400).set('Content-Type', 'text/plain').send('ERROR PARAM');
   }
   
   console.log(`Ricevuta richiesta /ricercauid per UID: ${uidToSearch}`);
@@ -3121,16 +3121,19 @@ app.get('/ricercauid', (req, res) => {
       .then((record: TagOwner | null) => { 
           console.log("Ricerca TagOwner completata.");
           if (record) { 
-              res.status(200).send(record.nominativo);
+            res.status(200).set('Content-Type', 'text/plain').send(record.nominativo);
+              
               console.log("record nominativo"); console.log(record.nominativo);
           } else {
               console.log(`TagOwner per UID ${uidToSearch} non trovato.`);
-              res.status(200).send("X");
+              res.status(200).set('Content-Type', 'text/plain').send("X");
+             
+              
           }
       })
       .catch((error: any) => { 
           console.error(`Errore durante il recupero del TagOwner per UID ${uidToSearch}:`, error);
-          res.status(500).send("errore");
+          res.status(500).set('Content-Type', 'text/plain').send('ERROR');
       });
 });
 // app.get('/ricercauid', (req, res) => {
