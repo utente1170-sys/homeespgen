@@ -97,6 +97,7 @@ let nome;
 // --- Gestione dell'Upgrade a WebSocket ---
 // Il server HTTP cattura le richieste di upgrade e le passa a wss
 server.on('upgrade', (request, socket, head) => {
+    console.log("sono dentro upgrade");
     // Verifichiamo il percorso della richiesta WebSocket
     // Il client si connetterà a ws://192.168.1.24:3000/ws
     if (request.url === '/ws') { // *** PUNTO CRITICO: Controlla che il percorso sia /ws ***
@@ -131,6 +132,7 @@ server.on('connection', (socket) => {
         console.log(`[SERVER_CONN] Dati RAW ricevuti da ${clientIp}:${clientPort}:`);
         console.log(data.toString('hex')); // Logga i dati in formato esadecimale
         // console.log(data.toString('utf8')); // Prova a loggarlo come testo (potrebbe essere illeggibile)
+        console.log(data);
     });
     socket.on('error', (error) => {
         console.log("errore2");
@@ -2742,6 +2744,8 @@ app.get('/ricercauid', (req, res) => {
         console.log("Ricerca TagOwner completata.");
         if (record) {
             res.status(200).send(record.nominativo);
+            console.log("record nominativo");
+            console.log(record.nominativo);
         }
         else {
             console.log(`TagOwner per UID ${uidToSearch} non trovato.`);
