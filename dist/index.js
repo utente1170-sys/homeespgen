@@ -36,6 +36,7 @@ const path = require('path');
 // Autenticazione per tutte le rotte (inclusi asset statici e homepage)
 //app.use(conditionalBasicAuth); //basicAuth);
 app.use(auth_1.basicAuth);
+const os = require('os'); // Modulo Node.js per informazioni sul sistema operativo
 app.use(express.static(path.join(__dirname, '../public')));
 let test = (process.env.TEST || 'false') == 'true' ? true : false;
 let server;
@@ -111,6 +112,52 @@ server.on('upgrade', (request, socket, head) => {
         socket.destroy();
     }
 });
+/**
+ * Ottiene l'indirizzo IP IPv4 non interno che corrisponde a un prefisso IP specifico.
+ * @param {string} ipPrefix Il prefisso IP da cercare (es. '192.168.1.').
+ * @returns {string} L'indirizzo IP locale del server, o 'localhost' come fallback.
+ */
+function getFilteredLocalIpAddress(ipPrefix) {
+    const interfaces = os.networkInterfaces();
+    console.log(interfaces);
+    for (const interfaceName in interfaces) {
+        const iface = interfaces[interfaceName];
+        console.log(iface);
+        for (const alias of iface) {
+            if (alias.family === 'IPv4' && !alias.internal && alias.address.startsWith(ipPrefix)) {
+                return alias.address;
+            }
+        }
+    }
+    return 'localhost';
+}
+// Funzione per ottenere l'IP locale della macchina
+/**
+ * Ottiene l'indirizzo IP locale del server con un ordine di preferenza.
+ * @returns {string} L'indirizzo IP locale del server.
+ */
+function getRobustLocalIpAddress() {
+    const interfaces = os.networkInterfaces();
+    // Nomi di interfacce preferiti (specifici del tuo SO/hardware)
+    const preferredInterfaceNames = ['EthernetPC', 'eth0', 'Ethernet', 'Wi-Fi', 'wlan0', 'en0'];
+    const preferredIpPrefix = '';
+    // 1. Cerca per nomi preferiti
+    for (const name of preferredInterfaceNames) {
+        const iface = interfaces[name];
+        if (iface) {
+            for (const alias of iface) {
+                if (alias.family === 'IPv4' && !alias.internal) {
+                    console.log(`[IP_RESOLVER] Trovato IP da interfaccia preferita "${name}": ${alias.address}`);
+                    return alias.address;
+                }
+            }
+        }
+    }
+}
+let serverIp = getFilteredLocalIpAddress("");
+console.log(serverIp);
+serverIp = getRobustLocalIpAddress();
+console.log(serverIp);
 // Avvio del server HTTP
 server.listen(port, "0.0.0.0", () => {
     console.log("Server is running on port " + port);
@@ -127,7 +174,8 @@ server.on('connection', (socket) => {
     // console.log('Nuova connessione da:', socket.remoteAddress + ':' + socket.remotePort);
     const clientIp = socket.remoteAddress;
     const clientPort = socket.remotePort;
-    console.log(`[SERVER_CONN] Nuova connessione da: ${clientIp}:${clientPort}`);
+    if (clientIp != serverIp)
+        console.log(`[SERVER_CONN] Nuova connessione da: ${clientIp}:${clientPort}`);
     socket.on('data', (data) => {
         console.log(`[SERVER_CONN] Dati RAW ricevuti da ${clientIp}:${clientPort}:`);
         console.log(data.toString('hex')); // Logga i dati in formato esadecimale
