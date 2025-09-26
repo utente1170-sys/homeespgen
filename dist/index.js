@@ -2783,25 +2783,24 @@ app.get('/ricercauid', (req, res) => {
     const uidToSearch = req.query.ricercaUID;
     UID = uidToSearch;
     if (!uidToSearch) { // Se il parametro e' mancante o non e' una stringa valida
-        console.warn("Richiesta /ricercauid senza parametro 'ricercaUID' o non valido.");
+        //  console.warn("Richiesta /ricercauid senza parametro 'ricercaUID' o non valido.");
         res.status(400).set('Content-Type', 'text/plain').send('ERROR PARAM');
     }
-    console.log(`Ricevuta richiesta /ricercauid per UID: ${uidToSearch}`);
+    //console.log(`Ricevuta richiesta /ricercauid per UID: ${uidToSearch}`);
     database_1.database.getTagOwnerByUID(uidToSearch) // Ora uidToSearch e' garantito essere una stringa
         .then((record) => {
-        console.log("Ricerca TagOwner completata.");
+        //    console.log("Ricerca TagOwner completata.");
         if (record) {
             res.status(200).set('Content-Type', 'text/plain').send(record.nominativo);
-            console.log("record nominativo");
-            console.log(record.nominativo);
+            //      console.log("record nominativo"); console.log(record.nominativo);
         }
         else {
-            console.log(`TagOwner per UID ${uidToSearch} non trovato.`);
+            //    console.log(`TagOwner per UID ${uidToSearch} non trovato.`);
             res.status(200).set('Content-Type', 'text/plain').send("X");
         }
     })
         .catch((error) => {
-        console.error(`Errore durante il recupero del TagOwner per UID ${uidToSearch}:`, error);
+        // console.error(`Errore durante il recupero del TagOwner per UID ${uidToSearch}:`, error);
         res.status(500).set('Content-Type', 'text/plain').send('ERROR');
     });
 });
