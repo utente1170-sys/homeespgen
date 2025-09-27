@@ -143,6 +143,13 @@ h1 {
     box-shadow: 0 2px 8px rgba(0,123,255,0.3); /* Ombra blu per enfasi */
 }
 
+
+.link {
+
+    
+    color: #007bff;
+    text-decoration: none;
+}
 /* ========================================
    4. TABELLE E STICKY HEADERS
    ======================================== */

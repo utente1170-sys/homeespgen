@@ -14,6 +14,7 @@ import { basicAuth,conditionalBasicAuth } from './middleware/auth';
 import logsRouter from './routes/logs';
 import { database, SensorRecord, TagOwner } from './database';
 import { generateBaseHTML,generateTastierinoNumerico, generateSearchSection, generateSearchScript, generatePagination, generateStickyHeaderScript, generatePaginationScript, generateAutoRefreshScript, disattivaScript, checkServer, resetDatabaseScript, generateDateRangeControls, generateDateRangeScript, generateSearchSectionWithDateFilter, generateDateFilterIndicator } from './helpers';
+import { allowedNodeEnvironmentFlags } from "process";
 const WebSocket = require('ws')
 const http = require('http');
 const https = require('https');
@@ -97,7 +98,7 @@ const wss = new WebSocket.Server({ noServer: true });
 // Poiché `test` è false, questo blocco verrà eseguito:
 
 
-let UID:string="";
+  let UID:string="";
 let nome:string;
  
 
@@ -667,6 +668,7 @@ function generateSensorDataTable(records: recor[], tagOwnersMap?: Map<string, an
             <td>${record.datetime}</td>
             <td>${Number(record.credito_precedente).toFixed(2)}€</td>
             <td>${Number(record.credito_attuale).toFixed(2)}€</td>
+            <td><span class="spesa">${Number(record.credito_attuale -Number(record.credito_precedente)).toFixed(2)}€</span></td>
             <td><span class="status ${record.status}">${record.status}</span></td>
         </tr>
     `;
@@ -737,6 +739,7 @@ function generateSensorDataTable(records: recor[], tagOwnersMap?: Map<string, an
                         <th>Data/Ora</th>
                         <th>Credito Precedente</th>
                         <th>Credito Attuale</th>
+                        <th>Valore Operaz.</th>
                         <th>Stato</th>
                     </tr>
                 </thead>
@@ -1222,14 +1225,33 @@ function generateSpendingDashboard(spendingData: {
   const additionalScripts = `
     ${generateSearchScript('searchOperations', 'clearOperationsSearch')}
     ${generateDateRangeScript('startDate', 'endDate', 'applyDateFilter')}
+     
+    window.setUidAndNavigate = function(selectedUid) {
+  fetch('/updateUID', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: selectedUid }),
+  })
+  .then(response => {
+      if (response.ok) {
+          console.log('UID aggiornato a: '+selectedUid);
+          // Naviga alla pagina tag-owners dopo aggiornamento
+          window.location.href = '/tag-owners';
+      } else {
+          console.error('Errore aggiornando UID');
+      }
+  })
+  .catch(error => console.error('Fetch error:', error));
+  return false; // Previeni navigazione link automatica
+}
   `;
 
   // Contenuto della pagina
   const content = `
     ${generatePagination(pagination)}
     <div class="container">
-        <h1>💰 Dashboard Spese - UID: ${spendingData.uid}</h1>
-        
+        <h1>💰 Dashboard Spese - UID: <a href='/tag-owners'class='link' onclick='return setUidAndNavigate("${spendingData.uid}")'  > ${spendingData.uid} </a> </h1>
+          
         <!-- Controlli per il filtro delle date -->
         ${generateDateRangeControls('startDate', 'endDate', 'applyDateFilter', generateDateFilterIndicator(filters?.startDate, filters?.endDate))}
         ${spendingData.fromBackup ? '<div class="backup-notice">📊 Dati completati con backup delle statistiche</div>' : ''}
@@ -1912,8 +1934,11 @@ function generateTagOwnersTable(tagOwners: TagOwner[], pagination?: {
     //setInterval(function(){
     //  refreshUid();  },2000);
     function loop(){
-    refreshUid();
-    setTimeout(loop,2000);
+    if (autoRefreshEnabled==true && isUserEditing==false  )
+     {  refreshUid();
+    console.log(autoRefreshEnabled);
+    console.log(isUserEditing);
+    setTimeout(loop,2000);}
     }
     loop();
 
@@ -1943,7 +1968,9 @@ function generateTagOwnersTable(tagOwners: TagOwner[], pagination?: {
         ${generateSearchSection('searchOperations', '🔍 Cerca per UID, nominativo o indirizzo...', 'clearOperationsSearch()')}
       <!--  \${generateTastierinoNumerico("displayValue", "handleConferma()", "handleAdd()", "handleRemove()") }  -->
        <div class='uid-controls' >
-        <input class='uid-input-field' type="text"  id='uids' value='` + UID + `'> 
+       <label for="uids">UID:</label>
+        <input class='uid-input-field' type="text"   id='uids' placeholder='UID' value='` + UID + ` '> 
+        
         <button class="refresh2-btn " onclick= "refreshUid()">🔄 Aggiorna</button>
         <span>  </span>
         <button class="refresh2-btn" onclick="addTagOwner()">🔄 Aggiungi</button>
@@ -2732,7 +2759,7 @@ app.get('/api/sensor-data/search', async (req, res) => {
       tagOwnersMap.set(owner.uid, owner);
     });
 
-    // Filtra i risultati
+    // Filtra i risultati // filtra risultati ricerca e evidenzia i valori nei campi non il punto .
     const filteredRecords = result.records.filter(record => {
       const tagOwner = tagOwnersMap.get(record.uid);
       const searchFields = [
@@ -2749,7 +2776,9 @@ app.get('/api/sensor-data/search', async (req, res) => {
         (record.datetime ?? '').toString(),
         (record.status ?? '').toString(),
         (record.credito_precedente ?? '').toString(),
-        (record.credito_attuale ?? '').toString()
+        (record.credito_attuale ?? '').toString(),
+        ((Number(record.credito_attuale-record.credito_precedente)) ?? '').toString(),
+        (record.status ?? '').toString()
       ];
       
       return searchFields.some(field => 
@@ -3136,6 +3165,14 @@ app.get('/ricercauid', (req, res) => {
           res.status(500).set('Content-Type', 'text/plain').send('ERROR');
       });
 });
+
+app.post('/updateUID', express.json(), (req, res) => {
+  console.log("sono qui");
+  UID = req.body.uid;
+  console.log('UID aggiornato:', UID);
+  res.sendStatus(200);
+});
+
 // app.get('/ricercauid', (req, res) => {
 //   // 1. Recupera il parametro 'ricercaUID' dalla query string.
 //   //    Aggiungi un controllo per assicurarti che sia una stringa e non undefined.

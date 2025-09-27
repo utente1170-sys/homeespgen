@@ -770,7 +770,7 @@ function generateSearchScript(searchId, clearFunction) {
             console.log('Generating tag owner rows');
             filteredData.forEach((owner, index) => {
                 const html = generateTagOwnerRow(owner);
-                console.log('Generated tag owner HTML:', html);
+                //console.log('Generated tag owner HTML:', html);
                 tableBody.insertAdjacentHTML('beforeend', html);
                 console.log('Added tag owner row', index);
             });
@@ -785,7 +785,7 @@ function generateSearchScript(searchId, clearFunction) {
             });
         }
         
-        console.log('Final table body HTML:', tableBody.innerHTML);
+        //console.log('Final table body HTML:', tableBody.innerHTML);
         
         // Evidenzia il termine di ricerca
         highlightSearchTerm(searchTerm);
@@ -801,7 +801,7 @@ function generateSearchScript(searchId, clearFunction) {
             if (currentPath.includes('/tag-owners')) {
                 colspan = 7; // possessori tag hanno 7 colonne
             } else if (currentPath.includes('/sensor-data')) {
-                colspan = 5; // Dati sensori hanno 5 colonne
+                colspan = 7; // Dati sensori hanno 5 colonne
             } else if (currentPath.includes('/spending-dashboard') && !currentPath.includes('/spending-dashboard/')) {
                 colspan = 7; // Dashboard generale spese ha 7 colonne (aggiunta accrediti)
             }
@@ -897,6 +897,8 @@ function generateSearchScript(searchId, clearFunction) {
                 <td>\${record.datetime}</td>
                 <td>\${Number(record.credito_precedente).toFixed(2)}€</td>
                 <td>\${Number(record.credito_attuale).toFixed(2)}€</td>
+     <!-- qui per celle da filtro ricerca -->
+                <td><span class="spesa">\${(Number(record.credito_attuale) - Number(record.credito_precedente)).toFixed(2)}€</span></td>
                 <td><span class="status \${record.status}">\${record.status}</span></td>
             </tr>
         \`;

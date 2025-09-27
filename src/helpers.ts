@@ -1,5 +1,5 @@
 // === FUNZIONI HELPER PER PARTI COMUNI ===
-
+ 
 // Funzione per generare la navbar comune
 export function generateNavbar(activePage: string): string {
   const pages = [
@@ -32,7 +32,7 @@ export function generateCSSLink(): string {
   const version = Date.now(); // Forza il ricaricamento del CSS
   return `<link rel="stylesheet" href="/styles.css?v=${version}">`;
 }
-import { attivaServer } from ".";
+ 
 
 
 // Funzione per generare la paginazione comune
@@ -786,7 +786,7 @@ export function generateSearchScript(searchId: string, clearFunction: string): s
             console.log('Generating tag owner rows');
             filteredData.forEach((owner, index) => {
                 const html = generateTagOwnerRow(owner);
-                console.log('Generated tag owner HTML:', html);
+                //console.log('Generated tag owner HTML:', html);
                 tableBody.insertAdjacentHTML('beforeend', html);
                 console.log('Added tag owner row', index);
             });
@@ -801,7 +801,7 @@ export function generateSearchScript(searchId: string, clearFunction: string): s
             });
         }
         
-        console.log('Final table body HTML:', tableBody.innerHTML);
+        //console.log('Final table body HTML:', tableBody.innerHTML);
         
         // Evidenzia il termine di ricerca
         highlightSearchTerm(searchTerm);
@@ -817,7 +817,7 @@ export function generateSearchScript(searchId: string, clearFunction: string): s
             if (currentPath.includes('/tag-owners')) {
                 colspan = 7; // possessori tag hanno 7 colonne
             } else if (currentPath.includes('/sensor-data')) {
-                colspan = 5; // Dati sensori hanno 5 colonne
+                colspan = 7; // Dati sensori hanno 5 colonne
             } else if (currentPath.includes('/spending-dashboard') && !currentPath.includes('/spending-dashboard/')) {
                 colspan = 7; // Dashboard generale spese ha 7 colonne (aggiunta accrediti)
             }
@@ -913,6 +913,8 @@ export function generateSearchScript(searchId: string, clearFunction: string): s
                 <td>\${record.datetime}</td>
                 <td>\${Number(record.credito_precedente).toFixed(2)}€</td>
                 <td>\${Number(record.credito_attuale).toFixed(2)}€</td>
+     <!-- qui per celle da filtro ricerca -->
+                <td><span class="spesa">\${(Number(record.credito_attuale) - Number(record.credito_precedente)).toFixed(2)}€</span></td>
                 <td><span class="status \${record.status}">\${record.status}</span></td>
             </tr>
         \`;
@@ -1071,7 +1073,11 @@ export function generateDateRangeControls(startDateId: string = 'startDate', end
     </div>
   `;
 }
+ 
+ 
 
+  
+ 
 // Funzione per generare il JavaScript per i controlli di data
 export function generateDateRangeScript(startDateId: string = 'startDate', endDateId: string = 'endDate', applyFunction: string = 'applyDateFilter'): string {
   return `
@@ -1313,3 +1319,4 @@ export function generateDateFilterIndicator(startDate?: string, endDate?: string
   }
   return '';
 } 
+

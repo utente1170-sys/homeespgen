@@ -572,6 +572,7 @@ function generateSensorDataTable(records, tagOwnersMap, pagination, filters) {
             <td>${record.datetime}</td>
             <td>${Number(record.credito_precedente).toFixed(2)}€</td>
             <td>${Number(record.credito_attuale).toFixed(2)}€</td>
+            <td><span class="spesa">${Number(record.credito_attuale - Number(record.credito_precedente)).toFixed(2)}€</span></td>
             <td><span class="status ${record.status}">${record.status}</span></td>
         </tr>
     `;
@@ -638,6 +639,7 @@ function generateSensorDataTable(records, tagOwnersMap, pagination, filters) {
                         <th>Data/Ora</th>
                         <th>Credito Precedente</th>
                         <th>Credito Attuale</th>
+                        <th>Valore Operaz.</th>
                         <th>Stato</th>
                     </tr>
                 </thead>
@@ -1040,13 +1042,32 @@ function generateSpendingDashboard(spendingData, pagination, filters) {
     const additionalScripts = `
     ${(0, helpers_1.generateSearchScript)('searchOperations', 'clearOperationsSearch')}
     ${(0, helpers_1.generateDateRangeScript)('startDate', 'endDate', 'applyDateFilter')}
+     
+    window.setUidAndNavigate = function(selectedUid) {
+  fetch('/updateUID', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: selectedUid }),
+  })
+  .then(response => {
+      if (response.ok) {
+          console.log('UID aggiornato a: '+selectedUid);
+          // Naviga alla pagina tag-owners dopo aggiornamento
+          window.location.href = '/tag-owners';
+      } else {
+          console.error('Errore aggiornando UID');
+      }
+  })
+  .catch(error => console.error('Fetch error:', error));
+  return false; // Previeni navigazione link automatica
+}
   `;
     // Contenuto della pagina
     const content = `
     ${(0, helpers_1.generatePagination)(pagination)}
     <div class="container">
-        <h1>💰 Dashboard Spese - UID: ${spendingData.uid}</h1>
-        
+        <h1>💰 Dashboard Spese - UID: <a href='/tag-owners'class='link' onclick='return setUidAndNavigate("${spendingData.uid}")'  > ${spendingData.uid} </a> </h1>
+          
         <!-- Controlli per il filtro delle date -->
         ${(0, helpers_1.generateDateRangeControls)('startDate', 'endDate', 'applyDateFilter', (0, helpers_1.generateDateFilterIndicator)(filters === null || filters === void 0 ? void 0 : filters.startDate, filters === null || filters === void 0 ? void 0 : filters.endDate))}
         ${spendingData.fromBackup ? '<div class="backup-notice">📊 Dati completati con backup delle statistiche</div>' : ''}
@@ -1683,8 +1704,11 @@ function generateTagOwnersTable(tagOwners, pagination) {
     //setInterval(function(){
     //  refreshUid();  },2000);
     function loop(){
-    refreshUid();
-    setTimeout(loop,2000);
+    if (autoRefreshEnabled==true && isUserEditing==false  )
+     {  refreshUid();
+    console.log(autoRefreshEnabled);
+    console.log(isUserEditing);
+    setTimeout(loop,2000);}
     }
     loop();
 
@@ -1713,7 +1737,9 @@ function generateTagOwnersTable(tagOwners, pagination) {
         ${(0, helpers_1.generateSearchSection)('searchOperations', '🔍 Cerca per UID, nominativo o indirizzo...', 'clearOperationsSearch()')}
       <!--  \${generateTastierinoNumerico("displayValue", "handleConferma()", "handleAdd()", "handleRemove()") }  -->
        <div class='uid-controls' >
-        <input class='uid-input-field' type="text"  id='uids' value='` + UID + `'> 
+       <label for="uids">UID:</label>
+        <input class='uid-input-field' type="text"   id='uids' placeholder='UID' value='` + UID + ` '> 
+        
         <button class="refresh2-btn " onclick= "refreshUid()">🔄 Aggiorna</button>
         <span>  </span>
         <button class="refresh2-btn" onclick="addTagOwner()">🔄 Aggiungi</button>
@@ -2429,9 +2455,9 @@ app.get('/api/sensor-data/search', (req, res) => __awaiter(void 0, void 0, void 
         tagOwners.forEach(owner => {
             tagOwnersMap.set(owner.uid, owner);
         });
-        // Filtra i risultati
+        // Filtra i risultati // filtra risultati ricerca e evidenzia i valori nei campi non il punto .
         const filteredRecords = result.records.filter(record => {
-            var _a, _b, _c, _d, _e, _f, _g;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j;
             const tagOwner = tagOwnersMap.get(record.uid);
             const searchFields = [
                 // record.DEVICE,
@@ -2447,7 +2473,9 @@ app.get('/api/sensor-data/search', (req, res) => __awaiter(void 0, void 0, void 
                 ((_d = record.datetime) !== null && _d !== void 0 ? _d : '').toString(),
                 ((_e = record.status) !== null && _e !== void 0 ? _e : '').toString(),
                 ((_f = record.credito_precedente) !== null && _f !== void 0 ? _f : '').toString(),
-                ((_g = record.credito_attuale) !== null && _g !== void 0 ? _g : '').toString()
+                ((_g = record.credito_attuale) !== null && _g !== void 0 ? _g : '').toString(),
+                ((_h = (Number(record.credito_attuale - record.credito_precedente))) !== null && _h !== void 0 ? _h : '').toString(),
+                ((_j = record.status) !== null && _j !== void 0 ? _j : '').toString()
             ];
             return searchFields.some(field => field.toLowerCase().includes(searchTerm.toLowerCase()));
         });
@@ -2803,6 +2831,12 @@ app.get('/ricercauid', (req, res) => {
         // console.error(`Errore durante il recupero del TagOwner per UID ${uidToSearch}:`, error);
         res.status(500).set('Content-Type', 'text/plain').send('ERROR');
     });
+});
+app.post('/updateUID', express.json(), (req, res) => {
+    console.log("sono qui");
+    UID = req.body.uid;
+    console.log('UID aggiornato:', UID);
+    res.sendStatus(200);
 });
 // app.get('/ricercauid', (req, res) => {
 //   // 1. Recupera il parametro 'ricercaUID' dalla query string.
