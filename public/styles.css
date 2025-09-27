@@ -565,6 +565,13 @@ ____________________________________________*/
     margin-bottom: 15px; /* Spazio sotto il valore per separazione dall'etichetta */
     text-shadow: 0 1px 2px rgba(0,0,0,0.3); /* Ombra del testo per profondità */
 }
+.stat-value-op {
+    font-size: 1.5em; /* Dimensione grande per enfatizzare il valore numerico */
+    font-weight: 700; /* Peso del font bold per maggiore impatto visivo */
+    color: #ffffff; /* Colore bianco per contrasto sul fondo scuro */
+    margin-bottom: 15px; /* Spazio sotto il valore per separazione dall'etichetta */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3); /* Ombra del testo per profondità */
+}
 
 /* Etichetta della statistica */
 .stat-label {

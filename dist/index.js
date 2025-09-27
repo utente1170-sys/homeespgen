@@ -1087,11 +1087,11 @@ function generateSpendingDashboard(spendingData, pagination, filters) {
         </div>
        
             <div class="stat-card">
-                <div class="stat-value">${spendingData.firstOperation ? spendingData.firstOperation.datetime : 'N/A'}</div>
+                <div class="stat-value-op">${spendingData.firstOperation ? spendingData.firstOperation.datetime : 'N/A'}</div>
                 <div class="stat-label">Prima Operazione</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">${spendingData.lastOperation ? spendingData.lastOperation.datetime : 'N/A'}</div>
+                <div class="stat-value-op">${spendingData.lastOperation ? spendingData.lastOperation.datetime : 'N/A'}</div>
                 <div class="stat-label">Ultima Operazione</div>
             </div>
          
