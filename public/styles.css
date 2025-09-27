@@ -258,7 +258,22 @@ tr:hover {
 .table-container::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
-
+.table-container tbody td:first-child,
+.table-container thead th:first-child
+ {
+  /*white-space: nowrap; /* evita che il testo vada a capo */
+  width: 100px; /* o altra larghezza minima adeguata */
+}
+.table-container tbody td:nth-child(2),
+.table-container thead th:nth-child(2),
+.table-container tbody td:nth-child(7),
+.table-container thead th:nth-child(7),
+.table-container tbody td:nth-child(6),
+.table-container thead th:nth-child(6)
+ {
+  /*white-space: nowrap; /* evita che il testo vada a capo */
+  width: 180px; /* o altra larghezza minima adeguata */
+}
 /* ========================================
    5. BOTTONI E CONTROLLI
    ======================================== */
