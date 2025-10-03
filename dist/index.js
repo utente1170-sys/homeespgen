@@ -1040,6 +1040,7 @@ function generateSpendingDashboard(spendingData, pagination, filters) {
     const additionalStyles = ``;
     // Script aggiuntivi specifici per questa pagina
     const additionalScripts = `
+   
     ${(0, helpers_1.generateSearchScript)('searchOperations', 'clearOperationsSearch')}
     ${(0, helpers_1.generateDateRangeScript)('startDate', 'endDate', 'applyDateFilter')}
      
@@ -1133,7 +1134,7 @@ function generateSpendingDashboard(spendingData, pagination, filters) {
               ${monthlyRows || '<tr><td colspan="5">Nessun dato mensile disponibile</td></tr>'}
             </tbody>
           </table>
-        </div>
+        </div>  
         <h2 class="section-title">📊 Dettaglio Operazioni</h2>
         ${(0, helpers_1.generateSearchSection)('searchOperations', '🔍 Cerca nelle operazioni...', 'clearOperationsSearch()')}
         <div class="table-container">

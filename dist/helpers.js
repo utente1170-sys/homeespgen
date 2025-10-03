@@ -596,6 +596,21 @@ function generateSearchScript(searchId, clearFunction) {
     // Funzione per la ricerca AJAX nelle tabelle
     let searchTimeout;
     
+   function clearHighlights() {
+        document.querySelectorAll('mark').forEach(mark => {
+            const parent = mark.parentNode;
+            if (parent) {
+                // Sposta i figli del tag <mark> direttamente nel suo genitore
+                while (mark.firstChild) {
+                    parent.insertBefore(mark.firstChild, mark);
+                }
+                // Rimuovi il tag <mark> stesso
+                parent.removeChild(mark);
+            }
+        });
+    }
+
+
     async function filterTable() {
         //const searchTerm = document.getElementById('${searchId}').value.toLowerCase();
          const rawValue = document.getElementById('${searchId}').value;
@@ -604,7 +619,7 @@ function generateSearchScript(searchId, clearFunction) {
         // Se il campo è vuoto, ripristina automaticamente lo stato iniziale
         if (!rawValue || rawValue.trim() === '') {
            // try { ${clearFunction}(); } catch (e) { window.location.reload(); }
-            
+            clearHighlights()  
           try {
                 const currentPath = window.location.pathname;
                 let endpoint = '';
@@ -740,6 +755,7 @@ function generateSearchScript(searchId, clearFunction) {
         console.log('updateTableWithFilteredData called with:', { filteredData, searchTerm, currentPath });
         
         const tableBody = document.querySelector('tbody');
+        
         if (!tableBody) {
             console.error('Table body not found');
             return;
@@ -750,6 +766,7 @@ function generateSearchScript(searchId, clearFunction) {
         
         if (filteredData.length === 0) {
             showNoResultsMessage(searchTerm);
+               clearHighlights(); 
             return;
         }
         
@@ -758,36 +775,37 @@ function generateSearchScript(searchId, clearFunction) {
         // Determina il tipo di tabella e genera le righe appropriate
         if (currentPath.includes('/spending-dashboard') && !currentPath.includes('/spending-dashboard/')) {
             // Dashboard generale spese
-            console.log('Generating spending dashboard rows');
+         //   console.log('Generating spending dashboard rows');
             filteredData.forEach((stat, index) => {
                 const row = document.createElement('tr');
                 row.innerHTML = generateSpendingDashboardRow(stat);
                 tableBody.appendChild(row);
-                console.log('Added spending dashboard row', index);
+           //     console.log('Added spending dashboard row', index);
             });
         } else if (currentPath.includes('/tag-owners')) {
             // possessori tag - le funzioni restituiscono già l'elemento tr completo
-            console.log('Generating tag owner rows');
+          //  console.log('Generating tag owner rows');
             filteredData.forEach((owner, index) => {
                 const html = generateTagOwnerRow(owner);
                 //console.log('Generated tag owner HTML:', html);
                 tableBody.insertAdjacentHTML('beforeend', html);
-                console.log('Added tag owner row', index);
+           //     console.log('Added tag owner row', index);
             });
         } else if (currentPath.includes('/sensor-data')) {
             // Dati sensori - le funzioni restituiscono già l'elemento tr completo
-            console.log('Generating sensor data rows');
+         //   console.log('Generating sensor data rows');
             filteredData.forEach((record, index) => {
                 const html = generateSensorDataRow(record);
-                console.log('Generated sensor data HTML:', html);
+           //     console.log('Generated sensor data HTML:', html);
                 tableBody.insertAdjacentHTML('beforeend', html);
-                console.log('Added sensor data row', index);
+            //    console.log('Added sensor data row', index);
             });
         }
         
         //console.log('Final table body HTML:', tableBody.innerHTML);
         
         // Evidenzia il termine di ricerca
+        console.log("chiamato quiiiiiiiiiiii");
         highlightSearchTerm(searchTerm);
     }
     
@@ -903,52 +921,121 @@ function generateSearchScript(searchId, clearFunction) {
             </tr>
         \`;
     }
-    
-    // Funzione per evidenziare il termine di ricerca
-    function highlightSearchTerm(searchTerm) {
-        if (!searchTerm) return;
-        
-        const cells = document.querySelectorAll('td');
-        cells.forEach(cell => {
-            // Preserva l'HTML esistente e applica l'evidenziazione solo al testo
-            const originalHTML = cell.innerHTML;
+
+    // Funzione ricorsiva per evidenziare il testo nei nodi (spostata fuori dal forEach per efficienza)
+function highlightTextInNode(node, searchTerm, regex) {
+    if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent;
+        if (regex.test(text)) {
+            // MODIFICA QUI: Aggiungi uno stile inline per forzare il colore giallo
+            const highlightedText = text.replace(regex, '<mark style="background-color: yellow; color: inherit;">$1</mark>');
+            const span = document.createElement('span');
+            span.innerHTML = highlightedText;
             
-            // Crea un elemento temporaneo per manipolare l'HTML
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = originalHTML;
-            
-            // Funzione ricorsiva per evidenziare il testo nei nodi
-            function highlightTextInNode(node) {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    // È un nodo di testo, applica l'evidenziazione
-                    const text = node.textContent;
-                    const regex = new RegExp('(' + searchTerm + ')', 'gi');
-                    if (regex.test(text)) {
-                        const highlightedText = text.replace(regex, '<mark>$1</mark>');
-                        const span = document.createElement('span');
-                        span.innerHTML = highlightedText;
-                        
-                        // Sostituisci il nodo di testo con il contenuto evidenziato
-                        const fragment = document.createDocumentFragment();
-                        while (span.firstChild) {
-                            fragment.appendChild(span.firstChild);
-                        }
-                        node.parentNode.replaceChild(fragment, node);
-                    }
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                    // È un elemento, processa i suoi figli
-                    const children = Array.from(node.childNodes);
-                    children.forEach(child => highlightTextInNode(child));
-                }
+            const fragment = document.createDocumentFragment();
+            while (span.firstChild) {
+                fragment.appendChild(span.firstChild);
             }
-            
-            // Applica l'evidenziazione a tutto il contenuto
-            highlightTextInNode(tempDiv);
-            
-            // Aggiorna la cella con l'HTML modificato
-            cell.innerHTML = tempDiv.innerHTML;
-        });
+            node.parentNode.replaceChild(fragment, node);
+        }
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+        // Evita di processare elementi <mark> già esistenti per non annidare o duplicare
+        if (node.tagName.toLowerCase() === 'mark') {
+            return; 
+        }
+        const children = Array.from(node.childNodes);
+        children.forEach(child => highlightTextInNode(child, searchTerm, regex));
     }
+}
+
+
+function highlightSearchTerm(searchTerm) { 
+    if (!searchTerm || searchTerm.trim() === '') {
+        console.log("Termine di ricerca vuoto, nessuna evidenziazione.");
+        return;
+    }
+
+    const tables = document.querySelectorAll('table');
+    let targetTable;
+
+    if (tables.length > 1) {
+        console.warn("Sono presenti " + tables.length + " tabelle. Evidenziazione sulla SECONDA tabella.");
+        targetTable = tables[1]; // Seleziona la seconda tabella (indice 1)
+    } else if (tables.length === 1) {
+        console.warn("È presente 1 tabella. Evidenziazione sulla PRIMA tabella.");
+        targetTable = tables[0]; // Seleziona la prima tabella (indice 0)
+    } else {
+        console.warn("Nessuna tabella trovata sulla pagina.");
+        return; // Nessuna tabella su cui operare
+    }
+   
+    console.log("Tentativo di evidenziazione sulla tabella:", targetTable);
+        
+    const cells = targetTable.querySelectorAll('td');
+    console.log("Numero di celle selezionate nella tabella:", cells.length);
+
+    // Prepara la regex una sola volta
+    const regex = new RegExp('(' + searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + ')', 'gi');
+
+    cells.forEach(cell => {
+        const originalHTML = cell.innerHTML;
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = originalHTML;
+        
+        // Applica l'evidenziazione a tutto il contenuto della cella
+        highlightTextInNode(tempDiv, searchTerm, regex);
+        
+        // Aggiorna la cella con l'HTML modificato
+        cell.innerHTML = tempDiv.innerHTML;
+    });
+    console.log("Processo di evidenziazione completato per la tabella selezionata.");
+}
+ 
+    // // Funzione per evidenziare il termine di ricerca
+    // function highlightSearchTerm(searchTerm) {
+    //     if (!searchTerm) return;
+        
+    //     const cells = document.querySelectorAll('td');
+    //     cells.forEach(cell => {
+    //         // Preserva l'HTML esistente e applica l'evidenziazione solo al testo
+    //         const originalHTML = cell.innerHTML;
+            
+    //         // Crea un elemento temporaneo per manipolare l'HTML
+    //         const tempDiv = document.createElement('div');
+    //         tempDiv.innerHTML = originalHTML;
+            
+    //         // Funzione ricorsiva per evidenziare il testo nei nodi
+    //         function highlightTextInNode(node) {
+    //             if (node.nodeType === Node.TEXT_NODE) {
+    //                 // È un nodo di testo, applica l'evidenziazione
+    //                 const text = node.textContent;
+    //                 const regex = new RegExp('(' + searchTerm + ')', 'gi');
+    //                 if (regex.test(text)) {
+    //                     const highlightedText = text.replace(regex, '<mark>$1</mark>');
+    //                     const span = document.createElement('span');
+    //                     span.innerHTML = highlightedText;
+                        
+    //                     // Sostituisci il nodo di testo con il contenuto evidenziato
+    //                     const fragment = document.createDocumentFragment();
+    //                     while (span.firstChild) {
+    //                         fragment.appendChild(span.firstChild);
+    //                     }
+    //                     node.parentNode.replaceChild(fragment, node);
+    //                 }
+    //             } else if (node.nodeType === Node.ELEMENT_NODE) {
+    //                 // È un elemento, processa i suoi figli
+    //                 const children = Array.from(node.childNodes);
+    //                 children.forEach(child => highlightTextInNode(child));
+    //             }
+    //         }
+            
+    //         // Applica l'evidenziazione a tutto il contenuto
+    //         highlightTextInNode(tempDiv);
+            
+    //         // Aggiorna la cella con l'HTML modificato
+    //         cell.innerHTML = tempDiv.innerHTML;
+    //     });
+    // }
     
     // Funzione per la ricerca locale (fallback)
     function filterTableLocal() {
@@ -972,6 +1059,7 @@ function generateSearchScript(searchId, clearFunction) {
                 row.classList.add('hidden-row');
             }
         });
+         highlightSearchTerm(searchTerm);
     }
     
     // Funzione per pulire la ricerca
