@@ -840,8 +840,9 @@ app.get('/api/tag-owners/search/:nominativo', async (req, res) => {
 // Endpoint per aggiungere/aggiornare un possessore
 app.post('/api/tag-owners', async (req, res) => {
   try {
+    
     const { uid, nominativo, indirizzo, note,created_at } = req.body;
-
+ 
     // Validazione dei dati
     if (!uid || !nominativo || !indirizzo) {
       return res.status(400).json({
@@ -856,7 +857,7 @@ app.post('/api/tag-owners', async (req, res) => {
       nominativo,
       indirizzo,
       note: note || undefined,
-      created_at
+      created_at 
     };
 
     await database.addTagOwner(tagOwner);
@@ -1757,7 +1758,12 @@ function generateTagOwnersTable(tagOwners: TagOwner[], pagination?: {
         const nominativo = document.getElementById('nominativo_' + uid).value.trim();
         const indirizzo = document.getElementById('indirizzo_' + uid).value.trim();
         const note = document.getElementById('note_' + uid).value.trim();
-        const created_at = document.getElementById('created_at_' + uid).value.trim();
+        const created_at_element = document.getElementById('created_at_' + uid);
+        let created_at="";
+        if (created_at_element)
+              created_at = document.getElementById('created_at_' + uid).value.trim();
+        else 
+           created_at=formatDateTimeForJSON(new Date())
         // Validazione
         if (!nominativo) {
             window.showStatus('Inserisci un nominativo valido', 'error');

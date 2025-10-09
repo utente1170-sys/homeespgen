@@ -1527,7 +1527,12 @@ function generateTagOwnersTable(tagOwners, pagination) {
         const nominativo = document.getElementById('nominativo_' + uid).value.trim();
         const indirizzo = document.getElementById('indirizzo_' + uid).value.trim();
         const note = document.getElementById('note_' + uid).value.trim();
-        const created_at = document.getElementById('created_at_' + uid).value.trim();
+        const created_at_element = document.getElementById('created_at_' + uid);
+        let created_at="";
+        if (created_at_element)
+              created_at = document.getElementById('created_at_' + uid).value.trim();
+        else 
+           created_at=formatDateTimeForJSON(new Date())
         // Validazione
         if (!nominativo) {
             window.showStatus('Inserisci un nominativo valido', 'error');
