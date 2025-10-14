@@ -2208,7 +2208,7 @@ function generateUtilityPage(data) {
         </div>
         
         <!-- Sezione Controllo Logging -->
-       <!-- <div class="utility-section">
+        <div class="utility-section">
             <h2>📝 Controllo Logging</h2>
             <p>Gestisci la memorizzazione dei log delle attività nel database.</p>
             
@@ -2237,7 +2237,7 @@ function generateUtilityPage(data) {
                     <li>I log esistenti rimangono disponibili anche se disattivato</li>
                 </ul>
             </div>
-        </div>   -->
+        </div>
         
         <!-- Sezione Pulizia Immediata -->
         <div class="utility-section">
@@ -2254,7 +2254,7 @@ function generateUtilityPage(data) {
         </div>
         
         <!-- Sezione Periodi di Conservazione -->
-     <!--   <div class="utility-section">
+        <div class="utility-section">
             <h2>📅 Periodi di Conservazione</h2>
             <p>Configura i periodi di conservazione per operazioni e statistiche (con backup automatico delle statistiche).</p>
             
@@ -2272,7 +2272,7 @@ function generateUtilityPage(data) {
             
             <button onclick="configureRetentionSettings()" id="retentionBtn" class="save-btn">Salva Configurazione</button>
             <div id="retentionStatus"></div>
-        </div>  -->
+        </div>
         
         <!-- Sezione Gestione Prodotti -->
         <div class="utility-section">
@@ -2318,7 +2318,7 @@ function generateUtilityPage(data) {
         </div>
         
         <!-- Sezione Pulizia Automatica -->
-      <!--   <div class="utility-section">
+        <div class="utility-section">
             <h2>⏰ Pulizia Automatica</h2>
             <p>Configura la pulizia automatica del database a intervalli regolari.</p>
             
@@ -2341,8 +2341,8 @@ function generateUtilityPage(data) {
             
             <button onclick="configureAutoCleanup()" id="autoCleanupBtn" class="save-btn">Salva Configurazione</button>
             <div id="autoCleanupStatus"></div>
-        </div>  -->
-    </div> 
+        </div>
+    </div>
 
     <script>
  
@@ -2512,50 +2512,30 @@ function generateUtilityPage(data) {
 
         // Funzioni per la gestione dei prodotti
         async function loadProducts() {
-          //  try {
+            try {
                 const response = await fetch('/api/prodotti/richiestalistaprodotti');
                 const result = await response.json();
-                console.log(result);
-                console.log(result.success);
-                console.log(result.success==true);
+                
                 if (result.success) {
                     renderProductsTable(result.data);
                     showProductStatus(\`Caricati \${result.data.length} prodotti\`, 'success');
                 } else {
                     showProductStatus('Errore nel caricamento dei prodotti', 'error');
                 }
-          //  } catch (error) {
-           //     showProductStatus('aaaaaErrore di connessione', 'error');
-           // }
+            } catch (error) {
+                showProductStatus('Errore di connessione', 'error');
+            }
         }
- function pad(num) {
-  return String(num).padStart(2, '0');
-}
 
- function formatDataIta(date){
-  let x = date.split('-');
-  return pad(x[2]) + "-" + pad(x[1]) + "-" + pad(x[0]);
-}
-
-           function formatDateTimeIta(dateTime) {
-            if (!dateTime || dateTime === '-') return '-';
-              // Separa data e ora
-              const [datePart, timePart] = dateTime.split(' ');
-            if (!datePart) return '-';
-              // Formatta la data usando formatDataIta
-            const formattedDate = formatDataIta(datePart);
-                // Se c'è anche l'ora, aggiungila
-        return timePart ? \`\${formattedDate} \${timePart}\` : formattedDate;
-          }   
         function renderProductsTable(products) {
             const tbody = document.getElementById('productsTableBody');
             if (!tbody) return;
-          
+
             if (products.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="no-data">Nessun prodotto trovato</td></tr>';
                 return;
             }
-            console.log("sono quiiiiii");
+
             tbody.innerHTML = products.map(product => \`
                 <tr>
                     <td>\${product.id}</td>
@@ -2569,7 +2549,6 @@ function generateUtilityPage(data) {
                     </td>
                 </tr>
             \`).join('');
-            console.log(tbody.innerHTML);
         }
 
         async function addProduct() {

@@ -726,8 +726,8 @@ export function generateSearchScript(searchId: string, clearFunction: string): s
                 // Determina l'endpoint in base alla pagina corrente
                 let endpoint = '';
                 const currentPath = window.location.pathname;
-                
-                if (currentPath.includes('/spending-dashboard') && !currentPath.includes('/spending-dashboard/')) {
+                  // MODIFICATO                                    !
+                if (currentPath.includes('/spending-dashboard') && currentPath.includes('/spending-dashboard/')) {
                     // Dashboard generale spese - usa endpoint con ricerca
                     endpoint = '/api/spending-stats/search?q=' + encodeURIComponent(searchTerm);
                 } else if (currentPath.includes('/tag-owners')) {
@@ -770,8 +770,8 @@ export function generateSearchScript(searchId: string, clearFunction: string): s
     function updateTableWithFilteredData(filteredData, searchTerm, currentPath) {
         console.log('updateTableWithFilteredData called with:', { filteredData, searchTerm, currentPath });
         
-        const tableBody = document.querySelector('tbody');
-        
+        //const tableBody = document.querySelector('tbody');
+         const tableBody = document.querySelector('#tabella1 tbody');
         if (!tableBody) {
             console.error('Table body not found');
             return;
@@ -789,7 +789,7 @@ export function generateSearchScript(searchId: string, clearFunction: string): s
         console.log('Filtered data length:', filteredData.length);
         
         // Determina il tipo di tabella e genera le righe appropriate
-        if (currentPath.includes('/spending-dashboard') && !currentPath.includes('/spending-dashboard/')) {
+        if (currentPath.includes('/spending-dashboard') && currentPath.includes('/spending-dashboard/')) {
             // Dashboard generale spese
          //   console.log('Generating spending dashboard rows');
             filteredData.forEach((stat, index) => {
@@ -827,7 +827,8 @@ export function generateSearchScript(searchId: string, clearFunction: string): s
     
     // Funzione per mostrare messaggio "nessun risultato"
     function showNoResultsMessage(searchTerm) {
-        const tableBody = document.querySelector('tbody');
+       // const tableBody = document.querySelector('tbody');   //PIPPO
+        const tableBody = document.querySelector('#tabella1 tbody');
         if (tableBody) {
             const currentPath = window.location.pathname;
             let colspan = 6; // Default
@@ -847,7 +848,7 @@ export function generateSearchScript(searchId: string, clearFunction: string): s
     // Funzioni helper per generare le righe delle tabelle
     function generateSpendingDashboardRow(stat) {
         // Debug: verifica i dati ricevuti
-        console.log('Generating spending dashboard row:', stat);
+     //   console.log('Generating spending dashboard row:', stat);
         
         // Assicurati che il nominativo sia disponibile
         const nominativo = stat.nominativo || '';

@@ -12,7 +12,8 @@ import { on } from "events";
 import { userLogger, logUserAction } from './middleware/logger';
 import { basicAuth,conditionalBasicAuth } from './middleware/auth';
 import logsRouter from './routes/logs';
-import { database, SensorRecord, TagOwner } from './database';
+import prodottiRouter from './routes/prodotti';
+import { database, SensorRecord, TagOwner, Prodotto } from './database';
 import { generateBaseHTML,generateTastierinoNumerico, generateSearchSection, generateSearchScript, generatePagination, generateStickyHeaderScript, generatePaginationScript, generateAutoRefreshScript, disattivaScript, checkServer, resetDatabaseScript, generateDateRangeControls, generateDateRangeScript, generateSearchSectionWithDateFilter, generateDateFilterIndicator } from './helpers';
 import { allowedNodeEnvironmentFlags } from "process";
 const WebSocket = require('ws')
@@ -342,6 +343,9 @@ app.use(userLogger);
 
 // Route per i log
 app.use('/api', logsRouter);
+
+// Route per i prodotti
+app.use('/api/prodotti', prodottiRouter);
 
 
 
@@ -731,7 +735,7 @@ function generateSensorDataTable(records: recor[], tagOwnersMap?: Map<string, an
          
      
         <div class="table-container">
-            <table>
+            <table id='tabella1'>
                 <thead>
                     <tr>
                         <th>DEVICE</th>
@@ -1113,13 +1117,21 @@ app.get('/spending-dashboard', async (req, res) => {
     const endDate = req.query.endDate as string;
     
     let stats: any[];
-    
+    let monthlyStats: any[] = [];
     // Se sono specificati i filtri delle date, usa la funzione specifica
     if (startDate && endDate) {
       stats = await database.getSpendingStatsByDateRange(startDate, endDate);
+       // Ottieni statistiche mensili per il periodo specificato
+       monthlyStats = await database.getGeneralMonthlyStatsByDateRange(startDate, endDate);
     } else {
       // Altrimenti usa la funzione normale
       stats = await database.getAllSpendingStats();
+        // Per il caso senza filtri, usa l'ultimo anno come periodo di default
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const startDateDefault = oneYearAgo.toISOString().split('T')[0];
+        const endDateDefault = new Date().toISOString().split('T')[0];
+        monthlyStats = await database.getGeneralMonthlyStatsByDateRange(startDateDefault, endDateDefault);
     }
 
     // Ottieni tutti i possessori dei tag per mostrare i nominativi
@@ -1156,7 +1168,7 @@ app.get('/spending-dashboard', async (req, res) => {
       totalOperations: globalTotalOperations,
       totalSpendingOperations: globalTotalSpendingOperations,
       totalAccrediti: globalTotalAccrediti
-    }, { startDate, endDate });
+    }, { startDate, endDate }, monthlyStats);// { startDate, endDate });
     res.send(html);
   } catch (error) {
     console.error('Errore nella generazione della dashboard generale:', error);
@@ -1323,7 +1335,7 @@ function generateSpendingDashboard(spendingData: {
         <h2 class="section-title">📊 Dettaglio Operazioni</h2>
         ${generateSearchSection('searchOperations', '🔍 Cerca nelle operazioni...', 'clearOperationsSearch()')}
         <div class="table-container">
-            <table>
+            <table id='tabella1'>
                 <thead> 
                     <tr> 
                         <th>DEVICE</th> 
@@ -1368,7 +1380,7 @@ function generateGeneralSpendingDashboard(stats: Array<{
   totalOperations: number;
   totalSpendingOperations: number;
   totalAccrediti: number;
-}, filters?: { startDate?: string; endDate?: string }): string {
+}, filters?: { startDate?: string; endDate?: string }, monthlyStats?: Array<{ yearMonth: string, totalOperations: number, totalSpendingOperations: number, totalSpent: number, totalAccrediti: number }>): string {  // filters?: { startDate?: string; endDate?: string }): string {
   const tableRows = stats.map(stat => {
     // Controlla se esiste un possessore per questo UID
     const tagOwner = tagOwnersMap?.get(stat.uid);
@@ -1485,7 +1497,7 @@ function generateGeneralSpendingDashboard(stats: Array<{
     <div class="container">
         <h1>💰 Dashboard Generale Spese</h1>
         
-        
+           ${generateDateRangeControls('startDate', 'endDate', 'applyDateFilter', generateDateFilterIndicator(filters?.startDate, filters?.endDate))}
         
         <div class="stats-grid">
             <div class="stat-card">
@@ -1517,12 +1529,40 @@ function generateGeneralSpendingDashboard(stats: Array<{
             </div>
         </div>
 
+ ${monthlyStats && monthlyStats.length > 0 ? `
+        <h2 class="section-title">📅 Riepilogo Mensile Generale</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mese</th>
+                        <th>Operazioni Totali</th>
+                        <th>Operazioni di Spesa</th>
+                        <th>Spesa Totale</th>
+                        <th>Accrediti Totali</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${monthlyStats.map(row => `
+                        <tr>
+                            <td>${row.yearMonth}</td>
+                            <td>${row.totalOperations}</td>
+                            <td>${row.totalSpendingOperations}</td>
+                            <td>${row.totalSpent.toFixed(2)}€</td>
+                            <td>${row.totalAccrediti.toFixed(2)}€</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+        ` : ''}
+
         <h2 class="section-title">📊 Riepilogo per UID</h2>
         <p class="backup-info">
           📊 = Dati provenienti da backup (record operativi cancellati)
         </p>
         <!-- Controlli per il filtro delle date -->
-        ${generateDateRangeControls('startDate', 'endDate', 'applyDateFilter', generateDateFilterIndicator(filters?.startDate, filters?.endDate))}
+     
         
        <!-- ${filters?.startDate && filters?.endDate ? `
           <div class="filter-info">
@@ -1534,7 +1574,7 @@ function generateGeneralSpendingDashboard(stats: Array<{
         ${generateSearchSection('searchOperations', '🔍 Cerca per UID o nominativo possessore...', 'clearOperationsSearch()')}
         
         <div class="table-container">
-            <table>
+            <table id='tabella1'>
                 <thead>
                     <tr>
                         <th>UID</th>
@@ -2337,6 +2377,62 @@ function generateUtilityPage(data: {
   };
   loggingStatus: boolean;
 }): string {
+  const additionalStyles = `
+    .product-controls {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .product-controls .setting-item {
+      margin-bottom: 15px;
+    }
+    
+    .product-controls .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .edit-btn, .delete-btn {
+      padding: 4px 8px;
+      margin: 2px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .edit-btn {
+      background: #ffc107;
+      color: #000;
+    }
+    
+    .edit-btn:hover {
+      background: #e0a800;
+    }
+    
+    .delete-btn {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .delete-btn:hover {
+      background: #c82333;
+    }
+    
+    .refresh-btn {
+      background: #17a2b8;
+      color: white;
+    }
+    
+    .refresh-btn:hover {
+      background: #138496;
+    }
+  `;
+
   const content = `
     <div class="container">
         <h1>🔧 Utility e Impostazioni Database</h1>
@@ -2394,7 +2490,7 @@ function generateUtilityPage(data: {
         </div>
         
         <!-- Sezione Controllo Logging -->
-        <div class="utility-section">
+       <!-- <div class="utility-section">
             <h2>📝 Controllo Logging</h2>
             <p>Gestisci la memorizzazione dei log delle attività nel database.</p>
             
@@ -2423,7 +2519,7 @@ function generateUtilityPage(data: {
                     <li>I log esistenti rimangono disponibili anche se disattivato</li>
                 </ul>
             </div>
-        </div>
+        </div>   -->
         
         <!-- Sezione Pulizia Immediata -->
         <div class="utility-section">
@@ -2440,7 +2536,7 @@ function generateUtilityPage(data: {
         </div>
         
         <!-- Sezione Periodi di Conservazione -->
-        <div class="utility-section">
+     <!--   <div class="utility-section">
             <h2>📅 Periodi di Conservazione</h2>
             <p>Configura i periodi di conservazione per operazioni e statistiche (con backup automatico delle statistiche).</p>
             
@@ -2458,10 +2554,53 @@ function generateUtilityPage(data: {
             
             <button onclick="configureRetentionSettings()" id="retentionBtn" class="save-btn">Salva Configurazione</button>
             <div id="retentionStatus"></div>
+        </div>  -->
+        
+        <!-- Sezione Gestione Prodotti -->
+        <div class="utility-section">
+            <h2>🛍️ Gestione Prodotti</h2>
+            <p>Gestisci i prodotti disponibili nel sistema con i relativi prezzi.</p>
+            
+            <div class="product-controls">
+                <div class="setting-item">
+                    <label for="productName">Nome Prodotto:</label>
+                    <input type="text" id="productName" placeholder="Inserisci nome prodotto">
+                </div>
+                
+                <div class="setting-item">
+                    <label for="productPrice">Prezzo (€):</label>
+                    <input type="number" id="productPrice" step="0.01" min="0" placeholder="0.00">
+                </div>
+                
+                <div class="button-group">
+                    <button onclick="addProduct()" class="save-btn">➕ Aggiungi Prodotto</button>
+                    <button onclick="loadProducts()" class="refresh-btn">🔄 Aggiorna Lista</button>
+                </div>
+            </div>
+            
+            <div id="productStatus"></div>
+            
+            <div class="table-container">
+                <table id="productsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Prodotto</th>
+                            <th>Prezzo</th>
+                            <th>Data Creazione</th>
+                            <th>Ultimo Aggiornamento</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody">
+                        <tr><td colspan="6" class="no-data">Caricamento prodotti...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
         
         <!-- Sezione Pulizia Automatica -->
-        <div class="utility-section">
+      <!--   <div class="utility-section">
             <h2>⏰ Pulizia Automatica</h2>
             <p>Configura la pulizia automatica del database a intervalli regolari.</p>
             
@@ -2484,8 +2623,8 @@ function generateUtilityPage(data: {
             
             <button onclick="configureAutoCleanup()" id="autoCleanupBtn" class="save-btn">Salva Configurazione</button>
             <div id="autoCleanupStatus"></div>
-        </div>
-    </div>
+        </div>  -->
+    </div> 
 
     <script>
  
@@ -2652,10 +2791,187 @@ function generateUtilityPage(data: {
                 alert(\`Errore di connessione durante \${actionText.toLowerCase()} logging\`);
             }
         }
+
+        // Funzioni per la gestione dei prodotti
+        async function loadProducts() {
+          //  try {
+                const response = await fetch('/api/prodotti/richiestalistaprodotti');
+                const result = await response.json();
+                console.log(result);
+                console.log(result.success);
+                console.log(result.success==true);
+                if (result.success) {
+                    renderProductsTable(result.data);
+                    showProductStatus(\`Caricati \${result.data.length} prodotti\`, 'success');
+                } else {
+                    showProductStatus('Errore nel caricamento dei prodotti', 'error');
+                }
+          //  } catch (error) {
+           //     showProductStatus('aaaaaErrore di connessione', 'error');
+           // }
+        }
+ function pad(num) {
+  return String(num).padStart(2, '0');
+}
+
+ function formatDataIta(date){
+  let x = date.split('-');
+  return pad(x[2]) + "-" + pad(x[1]) + "-" + pad(x[0]);
+}
+
+           function formatDateTimeIta(dateTime) {
+            if (!dateTime || dateTime === '-') return '-';
+              // Separa data e ora
+              const [datePart, timePart] = dateTime.split(' ');
+            if (!datePart) return '-';
+              // Formatta la data usando formatDataIta
+            const formattedDate = formatDataIta(datePart);
+                // Se c'è anche l'ora, aggiungila
+        return timePart ? \`\${formattedDate} \${timePart}\` : formattedDate;
+          }   
+        function renderProductsTable(products) {
+            const tbody = document.getElementById('productsTableBody');
+            if (!tbody) return;
+          
+            if (products.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Nessun prodotto trovato</td></tr>';
+                return;
+            }
+            console.log("sono quiiiiii");
+            tbody.innerHTML = products.map(product => \`
+                <tr>
+                    <td>\${product.id}</td>
+                    <td>\${product.prodotto}</td>
+                    <td>\${Number(product.prezzo).toFixed(2)}€</td>
+                    <td>\${formatDateTimeIta(product.created_at || '')}</td>
+                    <td>\${formatDateTimeIta(product.updated_at || '')}</td>
+                    <td>
+                        <button onclick="editProduct(\${product.id})" class="edit-btn">✏️ Modifica</button>
+                        <button onclick="deleteProduct(\${product.id})" class="delete-btn">🗑️ Elimina</button>
+                    </td>
+                </tr>
+            \`).join('');
+            console.log(tbody.innerHTML);
+        }
+
+        async function addProduct() {
+            const name = document.getElementById('productName').value.trim();
+            const price = parseFloat(document.getElementById('productPrice').value);
+
+            if (!name) {
+                showProductStatus('Inserisci un nome prodotto', 'error');
+                return;
+            }
+
+            if (isNaN(price) || price < 0) {
+                showProductStatus('Inserisci un prezzo valido', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/prodotti', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prodotto: name,
+                        prezzo: price
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showProductStatus('Prodotto aggiunto con successo!', 'success');
+                    // Pulisci i campi
+                    document.getElementById('productName').value = '';
+                    document.getElementById('productPrice').value = '';
+                    // Ricarica la lista
+                    loadProducts();
+                } else {
+                    showProductStatus('Errore: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showProductStatus('Errore di connessione', 'error');
+            }
+        }
+
+        async function editProduct(id) {
+            const newName = prompt('Nuovo nome prodotto:');
+            if (!newName) return;
+
+            const newPrice = prompt('Nuovo prezzo (€):');
+            if (!newPrice || isNaN(parseFloat(newPrice))) {
+                alert('Prezzo non valido');
+                return;
+            }
+
+            try {
+                const response = await fetch(\`/api/prodotti/\${id}\`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prodotto: newName,
+                        prezzo: parseFloat(newPrice)
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showProductStatus('Prodotto aggiornato con successo!', 'success');
+                    loadProducts();
+                } else {
+                    showProductStatus('Errore: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showProductStatus('Errore di connessione', 'error');
+            }
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Sei sicuro di voler eliminare questo prodotto?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(\`/api/prodotti/\${id}\`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showProductStatus('Prodotto eliminato con successo!', 'success');
+                    loadProducts();
+                } else {
+                    showProductStatus('Errore: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showProductStatus('Errore di connessione', 'error');
+            }
+        }
+
+        function showProductStatus(message, type) {
+            const statusDiv = document.getElementById('productStatus');
+            statusDiv.innerHTML = \`<div class="status-message status-\${type}">\${message}</div>\`;
+            
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // Carica i prodotti all'avvio della pagina
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+        });
     </script>
   `;
 
-  return generateBaseHTML('Utility e Impostazioni', 'utility', content);
+  return generateBaseHTML('Utility e Impostazioni', 'utility', content, additionalStyles);
 }
 
 app.get("/nRecords",  (req, res) => {

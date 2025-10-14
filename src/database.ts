@@ -32,6 +32,15 @@ export interface TagOwner {
   created_at?: string;      // Data di creazione
   updated_at?: string;      // Data di ultimo aggiornamento
 }
+
+// Interfaccia per i prodotti
+export interface Prodotto {
+  id?: number;              // ID autoincrementale
+  prodotto: string;         // Nome del prodotto (UNIQUE NOT NULL)
+  prezzo: number;           // Prezzo del prodotto (REAL NOT NULL)
+  created_at?: string;      // Data di creazione
+  updated_at?: string;      // Data di ultimo aggiornamento
+}
 const DB_PATH = process.env.DB_PATH || '/tmp/logs.db';
 
 class Database {
@@ -116,6 +125,17 @@ class Database {
       )
     `;
 
+    // Tabella per i prodotti
+    const createProdottiTable = `
+      CREATE TABLE IF NOT EXISTS prodotti (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        prodotto TEXT UNIQUE NOT NULL,
+        prezzo REAL NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
     // Indici per user_logs
     const createUserLogsIndexes = `
       CREATE INDEX IF NOT EXISTS idx_user_id ON user_logs(user_id);
@@ -196,6 +216,14 @@ class Database {
         console.error('Errore creazione tabella spending_monthly_stats:', err);
       } else {
         console.log('Tabella spending_monthly_stats creata/verificata');
+      }
+    });
+
+    this.db.run(createProdottiTable, (err) => {
+      if (err) {
+        console.error('Errore creazione tabella prodotti:', err);
+      } else {
+        console.log('Tabella prodotti creata/verificata');
       }
     });
   }
@@ -1545,6 +1573,103 @@ class Database {
     });
   }
 
+
+
+  async getGeneralMonthlyStatsByDateRange(startDate: string, endDate: string): Promise<Array<{ yearMonth: string, totalOperations: number, totalSpendingOperations: number, totalSpent: number, totalAccrediti: number }>> {
+    return new Promise((resolve, reject) => {
+      // Converte le date in timestamp Unix per il confronto diretto
+      const startTimestamp = this.convertDateToTimestamp(startDate);
+      const endTimestamp = this.convertDateToEndOfDayTimestamp(endDate);
+      
+      // Query per sensor_data (transazioni ancora presenti) con filtro date - formato MM-YYYY
+      const sqlSensor = `
+        SELECT   SUBSTR(datetime, 4, 2) || '-' || SUBSTR(datetime, 7, 4) as yearMonth,
+               COUNT(*) as totalOperations,
+               COUNT(CASE WHEN status IN ('doccia','spesa web','spesa cassa') THEN 1 END) as totalSpendingOperations,
+               SUM(CASE WHEN status IN ('doccia','spesa web','spesa cassa') THEN (credito_precedente - credito_attuale) ELSE 0 END) as totalSpent,
+               
+               SUM(CASE 
+                 WHEN status = 'accredito' THEN (credito_attuale - credito_precedente)
+                 WHEN status = 'ricar web' THEN (credito_attuale - credito_precedente)
+                 WHEN status = 'ricar cassa' THEN (credito_attuale - credito_precedente)
+                 WHEN status = 'azzeramento' THEN (-credito_precedente)
+                 ELSE 0 
+               END) as totalAccrediti
+        FROM sensor_data
+        WHERE CAST(timestamp AS INTEGER) BETWEEN ? AND ?
+        GROUP BY yearMonth
+      `;
+      
+      this.db.all(sqlSensor, [startTimestamp, endTimestamp], (err, sensorRows: Array<{ yearMonth: string, totalOperations: number, totalSpendingOperations: number, totalSpent: number, totalAccrediti: number }>) => {
+        if (err) {
+          reject(err);
+        } else {
+          // Query per spending_monthly_stats (backup mensile) con filtro date - converti YYYY-MM in MM-YYYY
+          const sqlBackup = `
+            SELECT 
+              SUBSTR(year_month, 6, 2) || '-' || SUBSTR(year_month, 1, 4) as yearMonth,
+              SUM(total_operations) as totalOperations,
+              SUM(total_spending_operations) as totalSpendingOperations,
+              SUM(total_spent) as totalSpent, 
+              SUM(total_credits) as totalAccrediti
+            FROM spending_monthly_stats
+            WHERE year_month >= ? AND year_month <= ?
+            GROUP BY yearMonth
+          `;
+          
+          // Converte le date per il filtro del backup (YYYY-MM)
+          const startYearMonth = startDate.substring(0, 7); // YYYY-MM
+          const endYearMonth = endDate.substring(0, 7); // YYYY-MM
+          
+          this.db.all(sqlBackup, [startYearMonth, endYearMonth], (err2, backupRows: Array<{ yearMonth: string, totalOperations: number, totalSpendingOperations: number, totalSpent: number, totalAccrediti: number }>) => {
+            if (err2) {
+              reject(err2);
+            } else {
+              // Unisci i risultati per mese
+              const monthlyMap = new Map<string, { totalOperations: number, totalSpendingOperations: number, totalSpent: number, totalAccrediti: number }>();
+              
+              // Aggiungi dati da sensor_data
+              for (const row of sensorRows) {
+                monthlyMap.set(row.yearMonth, {
+                  totalOperations: row.totalOperations || 0,
+                  totalSpendingOperations: row.totalSpendingOperations || 0,
+                  totalSpent: row.totalSpent || 0,
+                  totalAccrediti: row.totalAccrediti || 0
+                });
+              }
+              
+              // Aggiungi/somma dati da spending_monthly_stats
+              for (const row of backupRows) {
+                if (monthlyMap.has(row.yearMonth)) {
+                  const prev = monthlyMap.get(row.yearMonth)!;
+                  monthlyMap.set(row.yearMonth, {
+                    totalOperations: prev.totalOperations + (row.totalOperations || 0),
+                    totalSpendingOperations: prev.totalSpendingOperations + (row.totalSpendingOperations || 0),
+                    totalSpent: prev.totalSpent + (row.totalSpent || 0),
+                    totalAccrediti: prev.totalAccrediti + (row.totalAccrediti || 0)
+                  });
+                } else {
+                  monthlyMap.set(row.yearMonth, {
+                    totalOperations: row.totalOperations || 0,
+                    totalSpendingOperations: row.totalSpendingOperations || 0,
+                    totalSpent: row.totalSpent || 0,
+                    totalAccrediti: row.totalAccrediti || 0
+                  });
+                }
+              }
+              
+              // Ordina per mese
+              const result = Array.from(monthlyMap.entries())
+                .map(([yearMonth, data]) => ({ yearMonth, ...data }))
+                .sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
+              resolve(result);
+            }
+          });
+        }
+      });
+    });
+  }
+
   // Aggrega per mese le operazioni e la spesa di un UID con filtro date, sommando sensor_data e spending_monthly_stats
   async getMonthlyStatsByUIDAndDateRange(uid: string, startDate: string, endDate: string): Promise<Array<{ yearMonth: string, totalOperations: number, totalSpendingOperations: number, totalSpent: number, totalAccrediti: number }>> {
     return new Promise((resolve, reject) => {
@@ -2144,6 +2269,216 @@ class Database {
           if (err) reject(err);
           else resolve();
         });
+      });
+    });
+  }
+
+  // === FUNZIONI PER I PRODOTTI ===
+
+  // Aggiungi un nuovo prodotto
+  async addProdotto(prodotto: Prodotto): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        INSERT OR REPLACE INTO prodotti (prodotto, prezzo, created_at, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `;
+      
+      this.db.run(sql, [
+        prodotto.prodotto,
+        prodotto.prezzo
+      ], function(this: any, err) {
+        if (err) {
+          console.error('Errore inserimento prodotto:', err);
+          reject(err);
+        } else {
+          console.log(`Prodotto ${prodotto.prodotto} inserito/aggiornato nel database`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  // Ottieni tutti i prodotti
+  async getAllProdotti(): Promise<Prodotto[]> {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT * FROM prodotti 
+        ORDER BY prodotto ASC
+      `;
+      
+      this.db.all(sql, (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          const prodotti = rows.map((row: any) => ({
+            id: row.id,
+            prodotto: row.prodotto,
+            prezzo: row.prezzo,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+          }));
+          
+          resolve(prodotti as Prodotto[]);
+        }
+      });
+    });
+  }
+
+  // Ottieni prodotto per ID
+  async getProdottoById(id: number): Promise<Prodotto | null> {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT * FROM prodotti 
+        WHERE id = ?
+      `;
+      
+      this.db.get(sql, [id], (err, row: any) => {
+        if (err) {
+          reject(err);
+        } else if (!row) {
+          resolve(null);
+        } else {
+          const prodotto = {
+            id: row.id,
+            prodotto: row.prodotto,
+            prezzo: row.prezzo,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+          };
+          
+          resolve(prodotto as Prodotto);
+        }
+      });
+    });
+  }
+
+  // Ottieni prodotto per nome
+  async getProdottoByNome(nome: string): Promise<Prodotto | null> {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT * FROM prodotti 
+        WHERE prodotto = ?
+      `;
+      
+      this.db.get(sql, [nome], (err, row: any) => {
+        if (err) {
+          reject(err);
+        } else if (!row) {
+          resolve(null);
+        } else {
+          const prodotto = {
+            id: row.id,
+            prodotto: row.prodotto,
+            prezzo: row.prezzo,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+          };
+          
+          resolve(prodotto as Prodotto);
+        }
+      });
+    });
+  }
+
+  // Aggiorna un prodotto esistente
+  async updateProdotto(id: number, prodotto: Partial<Prodotto>): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE prodotti 
+        SET prodotto = COALESCE(?, prodotto),
+            prezzo = COALESCE(?, prezzo),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+      
+      this.db.run(sql, [
+        prodotto.prodotto || null,
+        prodotto.prezzo || null,
+        id
+      ], function(this: any, err) {
+        if (err) {
+          console.error('Errore aggiornamento prodotto:', err);
+          reject(err);
+        } else {
+          const success = this.changes > 0;
+          if (success) {
+            console.log(`Prodotto con ID ${id} aggiornato nel database`);
+          }
+          resolve(success);
+        }
+      });
+    });
+  }
+
+  // Elimina un prodotto
+  async deleteProdotto(id: number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        DELETE FROM prodotti 
+        WHERE id = ?
+      `;
+      
+      this.db.run(sql, [id], function(this: any, err) {
+        if (err) {
+          console.error('Errore eliminazione prodotto:', err);
+          reject(err);
+        } else {
+          const success = this.changes > 0;
+          if (success) {
+            console.log(`Prodotto con ID ${id} eliminato dal database`);
+          }
+          resolve(success);
+        }
+      });
+    });
+  }
+
+  // Elimina un prodotto per nome
+  async deleteProdottoByNome(nome: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        DELETE FROM prodotti 
+        WHERE prodotto = ?
+      `;
+      
+      this.db.run(sql, [nome], function(this: any, err) {
+        if (err) {
+          console.error('Errore eliminazione prodotto per nome:', err);
+          reject(err);
+        } else {
+          const success = this.changes > 0;
+          if (success) {
+            console.log(`Prodotto ${nome} eliminato dal database`);
+          }
+          resolve(success);
+        }
+      });
+    });
+  }
+
+  // Cerca prodotti per nome (ricerca parziale)
+  async searchProdotti(searchTerm: string): Promise<Prodotto[]> {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT * FROM prodotti 
+        WHERE prodotto LIKE ? 
+        ORDER BY prodotto ASC
+      `;
+      
+      this.db.all(sql, [`%${searchTerm}%`], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          const prodotti = rows.map((row: any) => ({
+            id: row.id,
+            prodotto: row.prodotto,
+            prezzo: row.prezzo,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+          }));
+          
+          resolve(prodotti as Prodotto[]);
+        }
       });
     });
   }
