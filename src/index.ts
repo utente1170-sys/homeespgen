@@ -16,6 +16,7 @@ import prodottiRouter from './routes/prodotti';
 import { database, SensorRecord, TagOwner, Prodotto } from './database';
 import { generateBaseHTML,generateTastierinoNumerico, generateSearchSection, generateSearchScript, generatePagination, generateStickyHeaderScript, generatePaginationScript, generateAutoRefreshScript, disattivaScript, checkServer, resetDatabaseScript, generateDateRangeControls, generateDateRangeScript, generateSearchSectionWithDateFilter, generateDateFilterIndicator } from './helpers';
 import { allowedNodeEnvironmentFlags } from "process";
+import { json } from "stream/consumers";
 const WebSocket = require('ws')
 const http = require('http');
 const https = require('https');
@@ -184,7 +185,7 @@ server.on('error', (error) => {
   console.error('Errore del server:', error);
 });
 
-server.on('connection', (socket) => {
+  server.on('connection', (socket) =>  {
   // console.log('Nuova connessione da:', socket.remoteAddress + ':' + socket.remotePort);
   const clientIp = socket.remoteAddress;
     const clientPort = socket.remotePort; 
@@ -217,7 +218,7 @@ server.on('connection', (socket) => {
 let ledState:boolean=false;
 try
 {
-wss.on('connection', ws => {
+wss.on('connection', ws =>   {
 //  console.log(`Un client si è connesso via WebSocket (standard)!${ws.id}`); // Log aggiornato
 
   ws.on('message', message => {
@@ -242,12 +243,42 @@ try{
       });
       
     }
+     else 
+    if ( JSON.parse(msgStr).type == "Lista" )
+    {
+ 
+
+         
+        database.getAllProdotti().then( (prodotti )=>
+        {
+        
+          ws.send(JSON.stringify( 
+          { type:"Lista", success: true, data: prodotti, message: `Trovati ${prodotti.length} prodotti}`}) 
+            );
+
+            
+          })
+        .catch ( (reason)=>{
+          ws.send(JSON.stringify( 
+            {type:"Lista", success: false, data:[], message: reason}) 
+              );
+
+        })
+        
+        
+      
+        
+
+
+
+    }
+    else   
     if (JSON.parse(msgStr).type === "Nome") {
       // Esegui JSON.parse una sola volta e memorizzalo in una variabile per efficienza e chiarezza
       
      
       const messageData = JSON.parse(msgStr);
-      
+      UID=messageData.source;
       // database.getTagOwnerByUID restituisce Promise<TagOwner | null>
       database.getTagOwnerByUID(messageData.source)
           .then((record: TagOwner | null) => { // Tipizza record come TagOwner O null

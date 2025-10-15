@@ -222,9 +222,18 @@ try {
                         }
                     });
                 }
-                if (JSON.parse(msgStr).type === "Nome") {
+                else if (JSON.parse(msgStr).type == "Lista") {
+                    database_1.database.getAllProdotti().then((prodotti) => {
+                        ws.send(JSON.stringify({ type: "Lista", success: true, data: prodotti, message: `Trovati ${prodotti.length} prodotti}` }));
+                    })
+                        .catch((reason) => {
+                        ws.send(JSON.stringify({ type: "Lista", success: false, data: [], message: reason }));
+                    });
+                }
+                else if (JSON.parse(msgStr).type === "Nome") {
                     // Esegui JSON.parse una sola volta e memorizzalo in una variabile per efficienza e chiarezza
                     const messageData = JSON.parse(msgStr);
+                    UID = messageData.source;
                     // database.getTagOwnerByUID restituisce Promise<TagOwner | null>
                     database_1.database.getTagOwnerByUID(messageData.source)
                         .then((record) => {
