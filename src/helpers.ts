@@ -17,7 +17,7 @@ export function generateNavbar(activePage: string): string {
   return `
     <nav class="navbar">
         <div class="navbar-container">
-         EspGen
+         NewEspGen
             <a href="/" class="navbar-brand">🏠 Home</a>
             <ul class="navbar-nav">
                 ${navItems}
@@ -43,7 +43,7 @@ export function generatePagination(pagination?: {
   totalPages: number;
 }): string {
   if (!pagination) return '';
-  
+    
   return `
     <div class="pagination">
         <select onchange="changeLimit(this.value)">

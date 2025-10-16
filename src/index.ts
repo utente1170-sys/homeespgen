@@ -556,7 +556,7 @@ app.get('/sensor-data', async (req, res) => {
     tagOwners.forEach(owner => {
       tagOwnersMap.set(owner.uid, owner);
     });
-
+ 
     // Genera la tabella HTML con i dati dei possessori e paginazione
     const html = generateSensorDataTable(records, tagOwnersMap, {
       page,
