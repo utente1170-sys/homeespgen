@@ -369,11 +369,31 @@ app.post("/postjson", (req, res) => __awaiter(void 0, void 0, void 0, function* 
             });
             // Salva i dati nel file JSON e nel database SQLite
             yield saveRecordToFile(record);
-            res.json({
+            //    res.writeHead(200, {
+            //     'Content-Type': 'application/json; charset=utf-8',
+            //     'Content-Length': Buffer.byteLength(req.body, 'utf8') // Calcola la lunghezza in byte
+            // });
+            //     res.end({
+            //       success: true,
+            //       message: "Dati ricevuti correttamente",
+            //       received: req.body
+            //     });
+            const responseData = {
                 success: true,
                 message: "Dati ricevuti correttamente",
-                received: req.body
+                received: req.body // Il JSON ricevuto dal client
+            };
+            // 2. Serializza l'oggetto in una stringa JSON
+            const jsonString = JSON.stringify(responseData);
+            // 3. Calcola la lunghezza in byte della *stringa JSON della risposta*
+            const contentLength = Buffer.byteLength(jsonString, 'utf8');
+            // 4. Invia gli header manualmente con la Content-Length corretta
+            res.writeHead(200, {
+                'Content-Type': 'application/json; charset=utf-8',
+                'Content-Length': contentLength
             });
+            // 5. Invia la stringa JSON come corpo della risposta
+            res.end(jsonString);
         }
         catch (error) {
             console.error("Errore nel processing dei dati:", error);
